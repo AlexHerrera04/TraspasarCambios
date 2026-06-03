@@ -1,10 +1,17 @@
 import React from 'react';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { Formik, Form } from 'formik';
 import TextInput from 'src/app/ui/TextInput';
 import Button from 'src/app/ui/Button';
 import SelectInput from 'src/app/ui/SelectInput';
 import { Spinner } from '@material-tailwind/react';
 import { useUser } from 'src/app/core/feature-user/provider/userProvider';
+
+type AppLanguage = 'es' | 'en';
+
+const APP_LANGUAGE_KEY = 'appLanguage';
+
+const getStoredLanguage = (): AppLanguage =>
+  localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
 const InputLine = ({
   value,
@@ -58,7 +65,9 @@ export const SelectLine = ({
   errors,
   touched,
   required = false,
-  isFetching = false
+  isFetching = false,
+  placeholder = 'Seleccionar...',
+  isDisabled = false,
 }: any) => (
   <div>
     <label className="block mb-2 text-md text-gray-300" htmlFor="name">
@@ -83,9 +92,10 @@ export const SelectLine = ({
             setFieldValue(name, evt);
           }}
           onBlur={handleBlur}
-          placeholder="Seleccionar..."
+          placeholder={placeholder}
           options={options}
           error={errors[name]}
+          isDisabled={isDisabled}
         ></SelectInput>
       </div>
     )}
@@ -105,12 +115,72 @@ const ContentForm = ({
   initialValues,
   isEdit,
   isFetching,
+  language,
+  showVisibleFor = false,
+  visibleForOptions = [],
+  visibleForValue = null,
 }: any) => {
+  const currentLanguage: AppLanguage = language || getStoredLanguage();
+
+  const copy =
+    currentLanguage === 'en'
+      ? {
+          selectPlaceholder: 'Select...',
+          titleLabel: 'Title (a good title can attract more users)',
+          descriptionLabel: 'Description (tell users what your content is about)',
+          shortDescriptionLabel:
+            'Short description (executive summary, maximum 70 characters)',
+          coverImage: 'Cover image',
+          visibleFor: 'Visible to',
+          contentType: 'Content type',
+          industry:
+            'Industry this content applies to (you can select more than one)',
+          audienceTitle:
+            'Classify the audience for this content (in all fields, you can choose more than one option by clicking)',
+          function: 'Function or business area',
+          level:
+            'Organization level (better qualified, more likely to be viewed)',
+          capacity:
+            'Capability (if your content involves any technological capability or tool)',
+          profile: 'Profile (what type of language this content contains)',
+          businessDriver:
+            'Business driver (this content should help improve one or more business dimensions)',
+          idiom: 'Content language',
+          updateContent: 'Update content',
+          next: 'Next',
+        }
+      : {
+          selectPlaceholder: 'Seleccionar...',
+          titleLabel: 'Título (un buen título puede atraer a más usuarios)',
+          descriptionLabel:
+            'Descripción (cuenta a los usuarios de que se trata tu contenido)',
+          shortDescriptionLabel:
+            'Descripción corta (resumen ejecutivo, máximo 70 caracteres)',
+          coverImage: 'Imagen de portada',
+          visibleFor: 'Visible para',
+          contentType: 'Tipo de contenido',
+          industry:
+            'Industria a la que aplica este contenido (Puede seleccionar más de una)',
+          audienceTitle:
+            'Clasifica la audiencia de este contenido (en todos los campos, puedes elegir más de una opción presionando)',
+          function: 'Función o área de empresa',
+          level:
+            'Nivel de la organización (mejor calificado, más probabilidad de ser visualizado)',
+          capacity:
+            'Capacidad (si tu contenido involucra alguna capacidad tecnológica o herramienta)',
+          profile: 'Perfil (que tipo de lenguaje contiene este contenido)',
+          businessDriver:
+            'Palanca de Negocio (este contenido, apuntar a mejorar alguna/s dimensión/es del negocio)',
+          idiom: 'Idioma del contenido',
+          updateContent: 'Actualizar contenido',
+          next: 'Siguiente',
+        };
+
   if (isEdit) {
     if (
       capacities &&
       capacities.length > 0 &&
-      typeof initialValues.capacity[0] === 'string'
+      typeof initialValues.capacity?.[0] === 'string'
     ) {
       initialValues.capacity = capacities.filter((c: any) =>
         initialValues.capacity.includes(c.label)
@@ -120,7 +190,7 @@ const ContentForm = ({
     if (
       levels &&
       levels.length > 0 &&
-      typeof initialValues.level[0] === 'string'
+      typeof initialValues.level?.[0] === 'string'
     ) {
       initialValues.level = levels.filter((c: any) =>
         initialValues.level.includes(c.label)
@@ -130,7 +200,7 @@ const ContentForm = ({
     if (
       industries &&
       industries.length > 0 &&
-      typeof initialValues.industry[0] === 'string'
+      typeof initialValues.industry?.[0] === 'string'
     ) {
       initialValues.industry = industries.filter((c: any) =>
         initialValues.industry.includes(c.label)
@@ -140,7 +210,7 @@ const ContentForm = ({
     if (
       functions &&
       functions.length > 0 &&
-      typeof initialValues.function[0] === 'string'
+      typeof initialValues.function?.[0] === 'string'
     ) {
       initialValues.function = functions.filter((c: any) =>
         initialValues.function.includes(c.label)
@@ -150,7 +220,7 @@ const ContentForm = ({
     if (
       profiles &&
       profiles.length > 0 &&
-      typeof initialValues.profile[0] === 'string'
+      typeof initialValues.profile?.[0] === 'string'
     ) {
       initialValues.profile = profiles.filter((c: any) =>
         initialValues.profile.includes(c.label)
@@ -160,7 +230,7 @@ const ContentForm = ({
     if (
       businessDrivers &&
       businessDrivers.length > 0 &&
-      typeof initialValues.business_driver[0] === 'string'
+      typeof initialValues.business_driver?.[0] === 'string'
     ) {
       initialValues.business_driver = businessDrivers.filter((c: any) =>
         initialValues.business_driver.includes(c.label)
@@ -170,7 +240,7 @@ const ContentForm = ({
     if (
       idioms &&
       idioms.length > 0 &&
-      typeof initialValues.idiom[0] === 'string'
+      typeof initialValues.idiom?.[0] === 'string'
     ) {
       initialValues.idiom = idioms.filter((c: any) =>
         initialValues.idiom.includes(c.label)
@@ -355,10 +425,11 @@ const ContentForm = ({
                 <Spinner className="h-12 w-12"></Spinner>
               </div>
             )}
+
             {(!isEdit || (!isFetching && isEdit)) && (
               <>
                 <InputLine
-                  label="Título (un buen título puede atraer a más usuarios)"
+                  label={copy.titleLabel}
                   name="name"
                   value={values.name}
                   handleChange={handleChange}
@@ -367,8 +438,9 @@ const ContentForm = ({
                   touched={touched}
                   disabled={isFetching && isEdit}
                 />
+
                 <InputLine
-                  label="Descripción (cuenta a los usuarios de que se trata tu contenido)"
+                  label={copy.descriptionLabel}
                   name="description"
                   isText
                   value={values.description}
@@ -378,8 +450,9 @@ const ContentForm = ({
                   touched={touched}
                   disabled={isFetching && isEdit}
                 />
+
                 <InputLine
-                  label="Descripción corta (resumen ejecutivo, máximo 70 caracteres)"
+                  label={copy.shortDescriptionLabel}
                   name="short_description"
                   isText
                   value={values.short_description}
@@ -389,12 +462,13 @@ const ContentForm = ({
                   touched={touched}
                   disabled={isFetching && isEdit}
                 />
+
                 <div className="mb-4">
                   <label
                     className="block mb-2 text-md text-gray-300"
                     htmlFor="name"
                   >
-                    Imagen de portada
+                    {copy.coverImage}
                   </label>
                   <div className="relative w-full">
                     <input
@@ -413,16 +487,33 @@ const ContentForm = ({
                     />
                   </div>
                 </div>
+
                 {errors.public_image && (
                   <div className="text-red-500 text-sm mb-4">
                     {errors.public_image.toString()}
                   </div>
                 )}
+
+                {showVisibleFor && (
+                  <SelectLine
+                    label={copy.visibleFor}
+                    name="visible_for"
+                    value={visibleForValue}
+                    options={visibleForOptions}
+                    handleChange={handleChange}
+                    handleBlur={handleBlur}
+                    setFieldValue={setFieldValue}
+                    errors={errors}
+                    touched={touched}
+                    placeholder={copy.selectPlaceholder}
+                    isDisabled={true}
+                  />
+                )}
               </>
             )}
 
             <SelectLine
-              label="Tipo de contenido"
+              label={copy.contentType}
               name="type"
               value={values.type}
               options={contentTypes}
@@ -431,10 +522,11 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
 
             <SelectLine
-              label="Industria a la que aplica este contenido (Puede seleccionar más de una)"
+              label={copy.industry}
               name="industry"
               isMulti
               value={values.industry}
@@ -444,14 +536,14 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
             <h2 className="text-lg font-bold text-gray-300 border-b-2 border-b-white/25 my-3">
-              Clasifica la audiencia de este contenido (en todos los campos,
-              puedes elegir más de una opción presionando)
+              {copy.audienceTitle}
             </h2>
 
             <SelectLine
-              label="Función o área de empresa"
+              label={copy.function}
               name="function"
               isMulti
               value={values.function}
@@ -461,10 +553,11 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
 
             <SelectLine
-              label="Nivel de la organización (mejor calificado, más probabilidad de ser visualizado)"
+              label={copy.level}
               name="level"
               isMulti
               value={values.level}
@@ -474,9 +567,11 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
+
             <SelectLine
-              label="Capacidad (si tu contenido involucra alguna capacidad tecnológica o herramienta)"
+              label={copy.capacity}
               name="capacity"
               isMulti
               value={values.capacity}
@@ -486,10 +581,12 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
+
             <SelectLine
               isMulti
-              label="Perfil (que tipo de lenguaje contiene este contenido)"
+              label={copy.profile}
               name="profile"
               value={values.profile}
               options={profiles}
@@ -498,10 +595,12 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
+
             <SelectLine
               isMulti
-              label="Palanca de Negocio (este contenido, apuntar a mejorar alguna/s dimensión/es del negocio)"
+              label={copy.businessDriver}
               name="business_driver"
               value={values.business_driver}
               options={businessDrivers}
@@ -510,9 +609,11 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
+
             <SelectLine
-              label="Idioma del contenido"
+              label={copy.idiom}
               name="idiom"
               value={values.idiom}
               options={idioms}
@@ -521,11 +622,12 @@ const ContentForm = ({
               setFieldValue={setFieldValue}
               errors={errors}
               touched={touched}
+              placeholder={copy.selectPlaceholder}
             />
 
             <div className="flex justify-end">
               <Button primary type="submit" disabled={!isValid}>
-                {isEdit ? 'Actualizar contenido' : 'Siguiente'}
+                {isEdit ? copy.updateContent : copy.next}
               </Button>
             </div>
           </Form>

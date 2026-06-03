@@ -20,6 +20,8 @@ import SelectInput from 'src/app/ui/SelectInput';
 import TextInput from 'src/app/ui/TextInput';
 import ContentForm from '../components/ContentForm';
 
+type AppLanguage = 'es' | 'en';
+
 type SelectOption = {
   value: number | string;
   label: string;
@@ -51,6 +53,11 @@ type ExpertContentState = {
   idiom: SelectOption | null;
   publicImage: File | null;
 };
+
+const APP_LANGUAGE_KEY = 'appLanguage';
+
+const getStoredLanguage = (): AppLanguage =>
+  localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
 const normalizeValue = (value: string) =>
   value.toLowerCase().replace(/\s+/g, '').trim();
@@ -116,7 +123,7 @@ const ExpertSelectLine = ({
   options,
   isMulti = false,
   onChange,
-  placeholder = 'Seleccionar',
+  placeholder,
   isDisabled = false,
 }: {
   label: string;
@@ -300,6 +307,7 @@ const NewContent: FunctionComponent<any> = () => {
   const { id } = useParams();
   const { userInfo, userAccountInfo, userID } = useUser();
 
+  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
   const [capacities, setCapacities] = useState<CapacityOption[]>([]);
   const [capacityGroups, setCapacityGroups] = useState<SelectOption[]>([]);
   const [contentTypes, setContentTypes] = useState<SelectOption[]>([]);
@@ -342,6 +350,118 @@ const NewContent: FunctionComponent<any> = () => {
     idiom: null,
     publicImage: null,
   });
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(getStoredLanguage());
+
+    window.addEventListener('app-language-change', syncLanguage);
+    window.addEventListener('storage', syncLanguage);
+
+    return () => {
+      window.removeEventListener('app-language-change', syncLanguage);
+      window.removeEventListener('storage', syncLanguage);
+    };
+  }, []);
+
+  const copy =
+    language === 'en'
+      ? {
+          selectPlaceholder: 'Select',
+          createError: 'Error creating content. Please try again.',
+          updateError: 'Error updating content. Please try again.',
+          uploadAssetError: 'Error uploading asset. Please try again.',
+          deleteAssetError: 'Error deleting asset. Please try again.',
+          expertStepCounterUser: '1/2',
+          expertStepCounterContent: '2/2',
+          expertUserTitle: 'User information',
+          expertUserCardTitle: 'User information',
+          expertUserCardDescription:
+            'Expert details and default company visibility.',
+          type: 'Type',
+          expert: 'Expert',
+          publicName: 'Public name',
+          contactEmail: 'Contact email',
+          phone: 'Phone',
+          visibleCompany: 'Company visible for',
+          portfolioLink: 'Portfolio link',
+          profilePicture: 'Profile picture',
+          wikiAvatar: 'Wiki avatar',
+          back: 'Back',
+          next: 'Next',
+          contentClassification: 'Content classification',
+          contentClassificationDescription:
+            'All content segmentation attributes.',
+          capacityGroup: 'Capacity group',
+          function: 'Function',
+          industry: 'Industry',
+          level: 'Level',
+          profile: 'Profile',
+          tool: 'Tool',
+          contentInformation: 'Content information',
+          contentInformationDescription: 'Details of the content to be uploaded.',
+          title: 'Title',
+          contentType: 'Content type',
+          description: 'Description',
+          shortDescription: 'Short description',
+          language: 'Language',
+          coverImage: 'Cover image',
+          previous: 'Previous',
+          saveAndContinue: 'Save and continue',
+          contentStepTitle: 'Content information',
+          editContent: 'Edit Content',
+          newContent: 'New Content',
+          contentDetails: 'Content details',
+          resources: 'Resources',
+        }
+      : {
+          selectPlaceholder: 'Seleccionar',
+          createError: 'Error creating content. Inténtalo de nuevo.',
+          updateError: 'Error updating content. Inténtalo de nuevo.',
+          uploadAssetError: 'Error uploading asset. Inténtalo de nuevo.',
+          deleteAssetError: 'Error deleting asset. Inténtalo de nuevo.',
+          expertStepCounterUser: '1/2',
+          expertStepCounterContent: '2/2',
+          expertUserTitle: 'Información del usuario',
+          expertUserCardTitle: 'Información del usuario',
+          expertUserCardDescription:
+            'Datos del experto y visibilidad empresarial por defecto.',
+          type: 'Tipo',
+          expert: 'Experto',
+          publicName: 'Nombre público',
+          contactEmail: 'Email de contacto',
+          phone: 'Teléfono',
+          visibleCompany: 'Empresa visible para',
+          portfolioLink: 'Enlace de portfolio',
+          profilePicture: 'Foto de perfil',
+          wikiAvatar: 'Avatar wiki',
+          back: 'Volver',
+          next: 'Siguiente',
+          contentClassification: 'Clasificación del contenido',
+          contentClassificationDescription:
+            'Todos los atributos de segmentación del contenido.',
+          capacityGroup: 'Grupo de capacidad',
+          function: 'Función',
+          industry: 'Industria',
+          level: 'Nivel',
+          profile: 'Perfil',
+          tool: 'Herramienta',
+          contentInformation: 'Información del contenido',
+          contentInformationDescription:
+            'Datos del contenido que va a subir el usuario.',
+          title: 'Título',
+          contentType: 'Tipo de contenido',
+          description: 'Descripción',
+          shortDescription: 'Descripción corta',
+          language: 'Idioma',
+          coverImage: 'Imagen de portada',
+          previous: 'Anterior',
+          saveAndContinue: 'Guardar y continuar',
+          contentStepTitle: 'Información del contenido',
+          editContent: 'Editar Contenido',
+          newContent: 'Nuevo Contenido',
+          contentDetails: 'Detalles del contenido',
+          resources: 'Recursos',
+        };
 
   const fixedProfile = useMemo(() => {
     return (
@@ -398,7 +518,7 @@ const NewContent: FunctionComponent<any> = () => {
         throw new Error('Error creating content');
       }
     } catch (error) {
-      alert('Error creating content. Inténtalo de nuevo.');
+      alert(copy.createError);
       setUploading(false);
     }
   };
@@ -422,7 +542,7 @@ const NewContent: FunctionComponent<any> = () => {
       setUploading(false);
       setActiveStep(1);
     } catch (error) {
-      alert('Error updating content. Inténtalo de nuevo.');
+      alert(copy.updateError);
       setUploading(false);
     }
   };
@@ -467,7 +587,7 @@ const NewContent: FunctionComponent<any> = () => {
       setAssets((prev) => [...prev, upload.data.asset]);
       setAssetUploading(false);
     } catch (error) {
-      alert('Error uploading asset. Inténtalo de nuevo.');
+      alert(copy.uploadAssetError);
     }
   };
 
@@ -491,7 +611,7 @@ const NewContent: FunctionComponent<any> = () => {
       navigate('/content');
       setAssetUploading(false);
     } catch (error) {
-      alert('Error uploading asset. Inténtalo de nuevo.');
+      alert(copy.uploadAssetError);
     }
   };
 
@@ -502,7 +622,7 @@ const NewContent: FunctionComponent<any> = () => {
       );
       setAssets((prev) => prev.filter((a: any) => a.id !== asset.id));
     } catch (error) {
-      alert('Error deleting asset. Inténtalo de nuevo.');
+      alert(copy.deleteAssetError);
     }
   };
 
@@ -546,21 +666,23 @@ const NewContent: FunctionComponent<any> = () => {
             value={50}
           />
           <div>
-            <h3 className="mb-2 text-center text-lg">1/2</h3>
-            <h2 className="text-center text-2xl">Información del usuario</h2>
+            <h3 className="mb-2 text-center text-lg">
+              {copy.expertStepCounterUser}
+            </h3>
+            <h2 className="text-center text-2xl">{copy.expertUserTitle}</h2>
           </div>
         </div>
       </div>
 
       <div className="space-y-6">
         <ExpertCard
-          title="Información del usuario"
-          description="Datos del experto y visibilidad empresarial por defecto."
+          title={copy.expertUserCardTitle}
+          description={copy.expertUserCardDescription}
         >
-          <ExpertTextLine label="Tipo" value="Experto" disabled={true} />
+          <ExpertTextLine label={copy.type} value={copy.expert} disabled={true} />
 
           <ExpertTextLine
-            label="Nombre público"
+            label={copy.publicName}
             value={expertUserData.publicName}
             onChange={(value) =>
               setExpertUserData((current) => ({
@@ -571,13 +693,13 @@ const NewContent: FunctionComponent<any> = () => {
           />
 
           <ExpertTextLine
-            label="Email de contacto"
+            label={copy.contactEmail}
             value={userAccountInfo?.contact_email || userInfo?.email || ''}
             disabled={true}
           />
 
           <ExpertTextLine
-            label="Teléfono"
+            label={copy.phone}
             value={expertUserData.phoneNumber}
             onChange={(value) =>
               setExpertUserData((current) => ({
@@ -588,7 +710,7 @@ const NewContent: FunctionComponent<any> = () => {
           />
 
           <ExpertTextLine
-            label="Empresa visible para"
+            label={copy.visibleCompany}
             value={expertUserData.visibleCompany}
             onChange={(value) =>
               setExpertUserData((current) => ({
@@ -599,7 +721,7 @@ const NewContent: FunctionComponent<any> = () => {
           />
 
           <ExpertTextLine
-            label="Enlace de portfolio"
+            label={copy.portfolioLink}
             value={expertUserData.portfolioLink}
             onChange={(value) =>
               setExpertUserData((current) => ({
@@ -610,7 +732,7 @@ const NewContent: FunctionComponent<any> = () => {
           />
 
           <ExpertFileLine
-            label="Foto de perfil"
+            label={copy.profilePicture}
             onChange={(file) =>
               setExpertUserData((current) => ({
                 ...current,
@@ -620,7 +742,7 @@ const NewContent: FunctionComponent<any> = () => {
           />
 
           <ExpertFileLine
-            label="Avatar wiki"
+            label={copy.wikiAvatar}
             onChange={(file) =>
               setExpertUserData((current) => ({
                 ...current,
@@ -632,10 +754,10 @@ const NewContent: FunctionComponent<any> = () => {
 
         <div className="flex justify-end gap-4">
           <Button outline onClick={() => navigate('/content')}>
-            Volver
+            {copy.back}
           </Button>
           <Button primary onClick={() => setExpertStep(1)}>
-            Siguiente
+            {copy.next}
           </Button>
         </div>
       </div>
@@ -645,14 +767,15 @@ const NewContent: FunctionComponent<any> = () => {
   const expertContentDetails = (
     <div className="space-y-6">
       <ExpertCard
-        title="Clasificación del contenido"
-        description="Todos los atributos de segmentación del contenido."
+        title={copy.contentClassification}
+        description={copy.contentClassificationDescription}
       >
         <ExpertSelectLine
-          label="Grupo de capacidad"
+          label={copy.capacityGroup}
           value={expertContentData.selectedCapacityGroups}
           options={capacityGroups}
           isMulti={true}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -662,10 +785,11 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertSelectLine
-          label="Función"
+          label={copy.function}
           value={expertContentData.selectedFunctions}
           options={functions}
           isMulti={true}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -675,10 +799,11 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertSelectLine
-          label="Industria"
+          label={copy.industry}
           value={expertContentData.selectedIndustries}
           options={industries}
           isMulti={true}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -688,10 +813,11 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertSelectLine
-          label="Nivel"
+          label={copy.level}
           value={expertContentData.selectedLevels}
           options={levels}
           isMulti={true}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -701,16 +827,17 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertTextLine
-          label="Perfil"
+          label={copy.profile}
           value={fixedProfileLabel}
           disabled={true}
         />
 
         <ExpertSelectLine
-          label="Herramienta"
+          label={copy.tool}
           value={expertContentData.selectedTools}
           options={tools}
           isMulti={true}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -721,11 +848,11 @@ const NewContent: FunctionComponent<any> = () => {
       </ExpertCard>
 
       <ExpertCard
-        title="Información del contenido"
-        description="Datos del contenido que va a subir el usuario."
+        title={copy.contentInformation}
+        description={copy.contentInformationDescription}
       >
         <ExpertTextLine
-          label="Título"
+          label={copy.title}
           value={expertContentData.name}
           onChange={(value) =>
             setExpertContentData((current) => ({
@@ -736,9 +863,10 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertSelectLine
-          label="Tipo de contenido"
+          label={copy.contentType}
           value={expertContentData.type}
           options={contentTypes}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -749,7 +877,7 @@ const NewContent: FunctionComponent<any> = () => {
 
         <div className="lg:col-span-2">
           <ExpertTextLine
-            label="Descripción"
+            label={copy.description}
             value={expertContentData.description}
             onChange={(value) =>
               setExpertContentData((current) => ({
@@ -762,7 +890,7 @@ const NewContent: FunctionComponent<any> = () => {
 
         <div className="lg:col-span-2">
           <ExpertTextLine
-            label="Descripción corta"
+            label={copy.shortDescription}
             value={expertContentData.shortDescription}
             onChange={(value) =>
               setExpertContentData((current) => ({
@@ -774,9 +902,10 @@ const NewContent: FunctionComponent<any> = () => {
         </div>
 
         <ExpertSelectLine
-          label="Idioma"
+          label={copy.language}
           value={expertContentData.idiom}
           options={idioms}
+          placeholder={copy.selectPlaceholder}
           onChange={(value) =>
             setExpertContentData((current) => ({
               ...current,
@@ -786,7 +915,7 @@ const NewContent: FunctionComponent<any> = () => {
         />
 
         <ExpertFileLine
-          label="Imagen de portada"
+          label={copy.coverImage}
           onChange={(file) =>
             setExpertContentData((current) => ({
               ...current,
@@ -798,7 +927,7 @@ const NewContent: FunctionComponent<any> = () => {
 
       <div className="flex justify-end gap-4">
         <Button outline onClick={() => setExpertStep(0)}>
-          Anterior
+          {copy.previous}
         </Button>
 
         <Button
@@ -814,7 +943,7 @@ const NewContent: FunctionComponent<any> = () => {
             !expertContentData.publicImage
           }
         >
-          {uploading ? <Spinner className="h-4 w-4" /> : 'Guardar y continuar'}
+          {uploading ? <Spinner className="h-4 w-4" /> : copy.saveAndContinue}
         </Button>
       </div>
     </div>
@@ -853,8 +982,10 @@ const NewContent: FunctionComponent<any> = () => {
             value={100}
           />
           <div>
-            <h3 className="mb-2 text-center text-lg">2/2</h3>
-            <h2 className="text-center text-2xl">Información del contenido</h2>
+            <h3 className="mb-2 text-center text-lg">
+              {copy.expertStepCounterContent}
+            </h3>
+            <h2 className="text-center text-2xl">{copy.contentStepTitle}</h2>
           </div>
         </div>
       </div>
@@ -876,7 +1007,7 @@ const NewContent: FunctionComponent<any> = () => {
   const companyContent = (
     <div className="my-5 container mx-auto">
       <h2 className="mt-10 mb-7 text-4xl font-bold">
-        {id ? 'Editar Contenido' : 'Nuevo Contenido'}
+        {id ? copy.editContent : copy.newContent}
       </h2>
       <div className="mb-3 flex justify-center">
         <div className="flex w-1/2 flex-col items-center justify-center">
@@ -887,7 +1018,7 @@ const NewContent: FunctionComponent<any> = () => {
           <div>
             <h3 className="mb-2 text-center text-lg">{activeStep + 1}/2</h3>
             <h2 className="text-center text-2xl">
-              {activeStep === 0 ? 'Detalles del contenido' : 'Recursos'}
+              {activeStep === 0 ? copy.contentDetails : copy.resources}
             </h2>
           </div>
         </div>
@@ -913,6 +1044,7 @@ const NewContent: FunctionComponent<any> = () => {
           isEdit={!!id}
           isFetching={fetchingOptions}
           handleSubmit={handleSubmit}
+          language={language}
           showVisibleFor={userAccountInfo?.type === 'expert'}
           visibleForOptions={[{ value: 'acme', label: 'Acme' }]}
           visibleForValue={{ value: 'acme', label: 'Acme' }}
@@ -951,7 +1083,7 @@ const NewContent: FunctionComponent<any> = () => {
   );
 
   return withNavbar({
-    children: companyContent,
+    children: userAccountInfo?.type === 'expert' ? expertContent : companyContent,
   });
 };
 

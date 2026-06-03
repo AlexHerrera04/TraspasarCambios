@@ -16,6 +16,7 @@ import {
   PowerIcon,
   Bars2Icon,
   UserIcon,
+  ClockIcon,
   BellIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -30,6 +31,11 @@ import api from 'src/app/core/api/apiProvider';
 import { getNoLeidas } from '../../feature-notifications/utils/notificaciones';
 
 const APP_LANGUAGE_KEY = 'appLanguage';
+
+type AppLanguage = 'es' | 'en';
+
+const getStoredLanguage = (): AppLanguage =>
+  localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
 const ROUTES = [
   {
@@ -83,23 +89,31 @@ const ROUTES = [
   },
 ];
 
-function ProfileMenu({ data, isExpert }: any) {
+function ProfileMenu({
+  data,
+  isExpert,
+  language,
+}: {
+  data: any;
+  isExpert: boolean;
+  language: AppLanguage;
+}) {
   const { logout } = useAuth();
   const { setUserInfo, setUserAccountInfo } = useUser();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const closeMenu = () => setIsMenuOpen(false);
   const navigate = useNavigate();
-  const language =
-    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
   const copy =
     language === 'en'
       ? {
           profile: 'Profile',
+          history: 'History',
           signOut: 'Sign out',
         }
       : {
           profile: 'Perfil',
+          history: 'Historial',
           signOut: 'Cerrar sesión',
         };
 
@@ -112,6 +126,11 @@ function ProfileMenu({ data, isExpert }: any) {
 
   const goToProfile = React.useCallback(() => {
     navigate('/profile');
+    closeMenu();
+  }, [navigate]);
+
+  const goToHistory = React.useCallback(() => {
+    navigate('/history');
     closeMenu();
   }, [navigate]);
 
@@ -154,6 +173,19 @@ function ProfileMenu({ data, isExpert }: any) {
             {copy.profile}
           </Typography>
         </MenuItem>
+
+        {!isExpert && (
+          <MenuItem
+            key="history"
+            onClick={goToHistory}
+            className="flex items-center gap-2 rounded"
+          >
+            <ClockIcon className="h-4 w-4" strokeWidth={2} />
+            <Typography as="span" variant="small" className="font-normal">
+              {copy.history}
+            </Typography>
+          </MenuItem>
+        )}
 
         <MenuItem
           key="signout"
@@ -236,14 +268,13 @@ function HomeActionButtons({ isExpert }: { isExpert: boolean }) {
 
 export default function ComplexNavbar({ children }: any) {
   const [isNavOpen, setIsNavOpen] = React.useState(false);
+  const [language, setLanguage] = React.useState<AppLanguage>(getStoredLanguage);
   const toggleIsNavOpen = () => setIsNavOpen((cur) => !cur);
   const { token } = useAuth();
   const { setUserInfo, setUserAccountInfo, userInfo, userAccountInfo } =
     useUser();
   const location = useLocation();
   const navigate = useNavigate();
-  const language =
-    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
   const { data: localUserInfo } = useQuery({
     queryKey: ['userInfo', token],
@@ -266,6 +297,18 @@ export default function ComplexNavbar({ children }: any) {
 
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  React.useEffect(() => {
+    const syncLanguage = () => setLanguage(getStoredLanguage());
+
+    window.addEventListener('app-language-change', syncLanguage);
+    window.addEventListener('storage', syncLanguage);
+
+    return () => {
+      window.removeEventListener('app-language-change', syncLanguage);
+      window.removeEventListener('storage', syncLanguage);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -339,7 +382,13 @@ export default function ComplexNavbar({ children }: any) {
             <div className="mr-5 flex items-center gap-4">
               <HomeActionButtons isExpert={isExpert} />
             </div>
-            {userInfo && <ProfileMenu data={userInfo} isExpert={isExpert} />}
+            {userInfo && (
+              <ProfileMenu
+                data={userInfo}
+                isExpert={isExpert}
+                language={language}
+              />
+            )}
           </div>
 
           <IconButton

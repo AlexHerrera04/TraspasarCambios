@@ -1,6 +1,7 @@
 import {
   FunctionComponent,
   PropsWithChildren,
+  ReactNode,
   useEffect,
   useMemo,
   useState,
@@ -23,14 +24,29 @@ const LEGACY_PERSONALITY_KEY = 'personalidadCoach';
 const COACH_PERSONALITY_KEY = 'desktopCoachPersonality';
 const APP_LANGUAGE_KEY = 'appLanguage';
 
+const getStoredLanguage = (): AppLanguage =>
+  localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
 const COACH_PERSONALITIES: Array<{
   id: PersonalityId;
-  label: string;
+  label: Record<AppLanguage, string>;
   emoji: string;
 }> = [
-  { id: 'motivador', label: 'Motivador', emoji: '🌟' },
-  { id: 'pragmatico', label: 'Pragmático', emoji: '⚡' },
-  { id: 'brutal', label: 'Brutal', emoji: '👊' },
+  {
+    id: 'motivador',
+    label: { es: 'Motivador', en: 'Motivator' },
+    emoji: '🌟',
+  },
+  {
+    id: 'pragmatico',
+    label: { es: 'Pragmático', en: 'Pragmatic' },
+    emoji: '⚡',
+  },
+  {
+    id: 'brutal',
+    label: { es: 'Brutal', en: 'Brutal' },
+    emoji: '👊',
+  },
 ];
 
 const getStoredNumber = (
@@ -65,9 +81,13 @@ const readCoachPersonality = (): PersonalityId => {
   return 'pragmatico';
 };
 
-const getCoachPersonalityLabel = (value: PersonalityId): string => {
+const getCoachPersonalityLabel = (
+  value: PersonalityId,
+  language: AppLanguage
+): string => {
   return (
-    COACH_PERSONALITIES.find((item) => item.id === value)?.label || 'Pragmático'
+    COACH_PERSONALITIES.find((item) => item.id === value)?.label[language] ||
+    (language === 'en' ? 'Pragmatic' : 'Pragmático')
   );
 };
 
@@ -148,7 +168,7 @@ const SummaryCard = ({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) => (
   <div className="rounded-2xl border border-white/10 bg-gray-800 p-6">
     <h2 className="mb-4 text-xl font-bold text-white">{title}</h2>
@@ -258,20 +278,34 @@ const PreferenceRow = ({
   );
 };
 
-const MvpNoticeCard = ({ publicName }: { publicName?: string | null }) => {
+const MvpNoticeCard = ({
+  publicName,
+  language,
+}: {
+  publicName?: string | null;
+  language: AppLanguage;
+}) => {
+  const copy =
+    language === 'en'
+      ? {
+          eyebrow: 'Feedback',
+          body: `Hi ${publicName || 'user'}, we would love to hear your opinion so we can adapt to your needs. Any comment is welcome, so feel free to share your feedback to help us keep improving your OpenKX experience.`,
+          action: 'Feedback',
+        }
+      : {
+          eyebrow: 'FeedBack',
+          body: `Hola ${publicName || 'usuario'}, nos encantaría saber tu opinión para adaptarnos a tus necesidades, cualquier comentario será bienvenido así que no dudes en darnos tu feedback para seguir mejorando tu experiencia con OpenKX.`,
+          action: 'Feedback',
+        };
+
   return (
     <div className="mb-6 rounded-3xl border border-white/10 bg-gray-800 p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-300">
-            FeedBack
+            {copy.eyebrow}
           </p>
-          <p className="mt-3 text-sm leading-6 text-gray-300">
-            Hola {publicName || 'usuario'}, nos encantaría saber tu opinión para
-            adaptarnos a tus necesidades, cualquier comentario será bienvenido
-            así que no dudes en darnos tu feedback para seguir mejorando tu
-            experiencia con OpenKX.
-          </p>
+          <p className="mt-3 text-sm leading-6 text-gray-300">{copy.body}</p>
         </div>
 
         <a
@@ -284,7 +318,7 @@ const MvpNoticeCard = ({ publicName }: { publicName?: string | null }) => {
             type="button"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
           >
-            Feedback
+            {copy.action}
           </button>
         </a>
       </div>
@@ -298,9 +332,7 @@ const Profile: FunctionComponent = () => {
   const { userInfo, userAccountInfo, setUserInfo, setUserAccountInfo } =
     useUser();
 
-  const [language, setLanguage] = useState<AppLanguage>(() =>
-    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es'
-  );
+  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
   const [darkMode, setDarkMode] = useState<boolean>(
     localStorage.getItem('darkMode') === 'false' ? false : true
   );
@@ -333,6 +365,7 @@ const Profile: FunctionComponent = () => {
 
   useEffect(() => {
     localStorage.setItem(APP_LANGUAGE_KEY, language);
+    window.dispatchEvent(new Event('app-language-change'));
   }, [language]);
 
   useEffect(() => {
@@ -351,9 +384,178 @@ const Profile: FunctionComponent = () => {
     localStorage.setItem(COACH_PERSONALITY_KEY, personalidadCoach);
     localStorage.setItem(
       LEGACY_PERSONALITY_KEY,
-      getCoachPersonalityLabel(personalidadCoach)
+      getCoachPersonalityLabel(personalidadCoach, 'es')
     );
   }, [personalidadCoach]);
+
+  const copy =
+    language === 'en'
+      ? {
+          personalArea: 'Personal area',
+          profile: 'Profile',
+          profileSummary:
+            'Your account, your preferences and your personal context in one place.',
+          expertProfileSummary:
+            'Summary of the information you completed during onboarding.',
+          signOut: 'Sign out',
+          personalInformation: 'Personal information',
+          firstName: 'First name',
+          lastName: 'Last name',
+          publicName: 'Public name',
+          email: 'Email',
+          phone: 'Phone',
+          associatedCompany: 'Associated company',
+          portfolioLink: 'Portfolio link',
+          professionalContext: 'Professional context',
+          industry: 'Industry',
+          areaOrFunction: 'Area or function',
+          level: 'Level',
+          accountProfile: 'Profile',
+          capabilities: 'Capabilities',
+          accountType: 'Account type',
+          accountTypeExpert: 'Expert',
+          accountTypeCompany: 'Company',
+          goBack: 'Go back',
+          changePassword: 'Change password',
+          viewHistory: 'View history',
+          activeAccount: 'Active account',
+          unnamedUser: 'User without public name',
+          noEmail: 'No email available',
+          noCompany: 'No company',
+          coachPrefix: 'AI Coach',
+          myScore: 'My score',
+          favorites: 'Favorites',
+          saved: 'Saved',
+          history: 'History',
+          viewed: 'Viewed',
+          weeklyTarget: 'Weekly target',
+          goal: 'Goal',
+          points: 'Points',
+          personalData: 'Personal details',
+          personalDataDescription: 'Basic information about your account.',
+          username: 'Username',
+          companyProfile: 'Company profile',
+          companyProfileDescription:
+            'Professional context and organization data.',
+          company: 'Company',
+          function: 'Function',
+          content: 'Content',
+          contentDescription:
+            'Quick access to your activity and contributions.',
+          sharedContent: 'Shared content',
+          goToCollaborator: 'Go to collaborator',
+          myFavorites: 'My favorites',
+          myHistory: 'My history',
+          preferences: 'Preferences',
+          preferencesDescription:
+            'Personal settings and AI coach configuration.',
+          language: 'Language',
+          spanish: 'Spanish',
+          english: 'English',
+          lightMode: 'Light mode',
+          off: 'OFF',
+          on: 'ON',
+          weeklyChallengeFrequency: 'Weekly challenge frequency',
+          temporarilyUnavailable: 'Temporarily unavailable',
+          questionsPerChallenge: 'Questions per challenge',
+          coachPersonality: 'My AI Coach personality',
+          coachRecommendations: 'My AI Coach recommendations',
+          view: 'View',
+          helpCenter: 'Help center',
+          helpCenterDescription: 'Support, security and sign out.',
+          support: 'Support',
+          openHelpCenter: 'Open help center',
+          privacyAndSecurity: 'Privacy and security',
+          exit: 'Exit',
+          sharedSaved: `${likedCount} saved`,
+          historyValue:
+            historialCount > 0 ? `${historialCount} viewed` : 'View history',
+          scoreValue: `${userAccountInfo?.total_score ?? 0} points`,
+          weeklyTargetValue: `${targetSemanal} points`,
+        }
+      : {
+          personalArea: 'Área personal',
+          profile: 'Perfil',
+          profileSummary:
+            'Tu cuenta, tus preferencias y tu contexto personal en un solo sitio.',
+          expertProfileSummary:
+            'Resumen de la información que completaste en el onboarding.',
+          signOut: 'Cerrar sesión',
+          personalInformation: 'Información personal',
+          firstName: 'Nombre',
+          lastName: 'Apellido',
+          publicName: 'Nombre público',
+          email: 'Mail',
+          phone: 'Teléfono',
+          associatedCompany: 'Empresa asociada',
+          portfolioLink: 'Enlace de portfolio',
+          professionalContext: 'Contexto profesional',
+          industry: 'Industria',
+          areaOrFunction: 'Área o función',
+          level: 'Nivel',
+          accountProfile: 'Perfil',
+          capabilities: 'Capacidades',
+          accountType: 'Tipo de cuenta',
+          accountTypeExpert: 'Expert',
+          accountTypeCompany: 'Company',
+          goBack: 'Volver',
+          changePassword: 'Cambiar contraseña',
+          viewHistory: 'Ver historial',
+          activeAccount: 'Cuenta activa',
+          unnamedUser: 'Usuario sin nombre público',
+          noEmail: 'Sin e-mail disponible',
+          noCompany: 'Sin empresa',
+          coachPrefix: 'Coach',
+          myScore: 'Mi score',
+          favorites: 'Favoritos',
+          saved: 'Guardados',
+          history: 'Historial',
+          viewed: 'Vistos',
+          weeklyTarget: 'Target semanal',
+          goal: 'Objetivo',
+          points: 'Puntos',
+          personalData: 'Datos personales',
+          personalDataDescription: 'Información básica de tu cuenta.',
+          username: 'Usuario',
+          companyProfile: 'Perfil de empresa',
+          companyProfileDescription:
+            'Contexto profesional y datos de organización.',
+          company: 'Empresa',
+          function: 'Función',
+          content: 'Contenido',
+          contentDescription:
+            'Acceso rápido a tu actividad y contribuciones.',
+          sharedContent: 'Contenido compartido',
+          goToCollaborator: 'Ir al colaborador',
+          myFavorites: 'Mis favoritos',
+          myHistory: 'Mi historial',
+          preferences: 'Preferencias',
+          preferencesDescription:
+            'Ajustes personales y configuración del coach.',
+          language: 'Idioma',
+          spanish: 'Español',
+          english: 'English',
+          lightMode: 'Modo claro',
+          off: 'OFF',
+          on: 'ON',
+          weeklyChallengeFrequency: 'Frecuencia de desafío semanal',
+          temporarilyUnavailable: 'Temporalmente no disponible',
+          questionsPerChallenge: 'Preguntas por desafío',
+          coachPersonality: 'Personalidad de mi Coach AI',
+          coachRecommendations: 'Recomendaciones de mi Coach AI',
+          view: 'Ver',
+          helpCenter: 'Centro de ayuda',
+          helpCenterDescription: 'Soporte, seguridad y salida de sesión.',
+          support: 'Soporte',
+          openHelpCenter: 'Abrir centro de ayuda',
+          privacyAndSecurity: 'Privacidad y seguridad',
+          exit: 'Salir',
+          sharedSaved: `${likedCount} guardados`,
+          historyValue:
+            historialCount > 0 ? `${historialCount} vistos` : 'Ver historial',
+          scoreValue: `${userAccountInfo?.total_score ?? 0} puntos`,
+          weeklyTargetValue: `${targetSemanal} puntos`,
+        };
 
   const handleLogout = () => {
     setUserInfo(null);
@@ -369,11 +571,13 @@ const Profile: FunctionComponent = () => {
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary-300">
-                Área personal
+                {copy.personalArea}
               </p>
-              <h1 className="mt-2 text-3xl font-bold text-white">Perfil</h1>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                {copy.profile}
+              </h1>
               <p className="mt-2 text-sm text-gray-300">
-                Resumen de la información que completaste en el onboarding.
+                {copy.expertProfileSummary}
               </p>
             </div>
 
@@ -382,58 +586,61 @@ const Profile: FunctionComponent = () => {
               onClick={handleLogout}
               className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
             >
-              Cerrar sesión
+              {copy.signOut}
             </button>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <SummaryCard title="Información personal">
-              <InfoRow label="Nombre" value={userInfo?.first_name || '-'} />
-              <InfoRow label="Apellido" value={userInfo?.last_name || '-'} />
+            <SummaryCard title={copy.personalInformation}>
               <InfoRow
-                label="Nombre público"
+                label={copy.firstName}
+                value={userInfo?.first_name || '-'}
+              />
+              <InfoRow label={copy.lastName} value={userInfo?.last_name || '-'} />
+              <InfoRow
+                label={copy.publicName}
                 value={userAccountInfo?.public_name || '-'}
               />
               <InfoRow
-                label="Mail"
+                label={copy.email}
                 value={userAccountInfo?.contact_email || userInfo?.email || '-'}
               />
               <InfoRow
-                label="Teléfono"
+                label={copy.phone}
                 value={userAccountInfo?.phone_number || '-'}
               />
               <InfoRow
-                label="Empresa asociada"
+                label={copy.associatedCompany}
                 value={userInfo?.organization || 'Acme'}
               />
               <InfoRow
-                label="Enlace de portfolio"
+                label={copy.portfolioLink}
                 value={userAccountInfo?.portfolio_link || '-'}
               />
             </SummaryCard>
 
-            <SummaryCard title="Contexto profesional">
+            <SummaryCard title={copy.professionalContext}>
               <InfoRow
-                label="Industria"
+                label={copy.industry}
                 value={joinValues(userAccountInfo?.industry)}
               />
               <InfoRow
-                label="Área o función"
+                label={copy.areaOrFunction}
                 value={joinValues(userAccountInfo?.function)}
               />
+              <InfoRow label={copy.level} value={joinValues(userAccountInfo?.level)} />
               <InfoRow
-                label="Nivel"
-                value={joinValues(userAccountInfo?.level)}
-              />
-              <InfoRow
-                label="Perfil"
+                label={copy.accountProfile}
                 value={joinValues(userAccountInfo?.profile)}
               />
               <InfoRow
-                label="Capacidades"
+                label={copy.capabilities}
                 value={joinValues(userAccountInfo?.capacity)}
               />
-              <InfoRow label="Tipo de cuenta" value="Expert" />
+              <InfoRow
+                label={copy.accountType}
+                value={copy.accountTypeExpert}
+              />
             </SummaryCard>
           </div>
         </div>
@@ -445,9 +652,9 @@ const Profile: FunctionComponent = () => {
 
   const accountType =
     userAccountInfo?.type === 'company'
-      ? 'Company'
+      ? copy.accountTypeCompany
       : userAccountInfo?.type === 'expert'
-        ? 'Expert'
+        ? copy.accountTypeExpert
         : '-';
 
   const pageContent = (
@@ -458,7 +665,7 @@ const Profile: FunctionComponent = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              aria-label="Volver"
+              aria-label={copy.goBack}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-gray-800 text-white transition hover:bg-white/5"
             >
               <svg
@@ -476,12 +683,13 @@ const Profile: FunctionComponent = () => {
 
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary-300">
-                Área personal
+                {copy.personalArea}
               </p>
-              <h1 className="mt-2 text-3xl font-bold text-white">Perfil</h1>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                {copy.profile}
+              </h1>
               <p className="mt-2 text-sm text-gray-300">
-                Tu cuenta, tus preferencias y tu contexto personal en un solo
-                sitio.
+                {copy.profileSummary}
               </p>
             </div>
           </div>
@@ -492,14 +700,14 @@ const Profile: FunctionComponent = () => {
               onClick={() => navigate('./change-password')}
               className="rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-500"
             >
-              Cambiar contraseña
+              {copy.changePassword}
             </button>
             <button
               type="button"
               onClick={() => navigate('/history')}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Ver historial
+              {copy.viewHistory}
             </button>
           </div>
         </div>
@@ -508,15 +716,15 @@ const Profile: FunctionComponent = () => {
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="xl:max-w-xl">
               <p className="text-xs uppercase tracking-[0.22em] text-gray-400">
-                Cuenta activa
+                {copy.activeAccount}
               </p>
               <h2 className="mt-2 text-3xl font-bold text-white">
                 {userAccountInfo?.public_name ||
                   userInfo?.username ||
-                  'Usuario sin nombre público'}
+                  copy.unnamedUser}
               </h2>
               <p className="mt-2 text-sm text-gray-300">
-                {userInfo?.email || 'Sin e-mail disponible'}
+                {userInfo?.email || copy.noEmail}
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -524,135 +732,135 @@ const Profile: FunctionComponent = () => {
                   {accountType}
                 </span>
                 <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300">
-                  {userInfo?.organization || 'Sin empresa'}
+                  {userInfo?.organization || copy.noCompany}
                 </span>
                 <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300">
-                  Coach {getCoachPersonalityLabel(personalidadCoach)}
+                  {copy.coachPrefix}{' '}
+                  {getCoachPersonalityLabel(personalidadCoach, language)}
                 </span>
               </div>
             </div>
 
             <div className="grid w-full max-w-[460px] grid-cols-2 gap-3">
               <StatCard
-                label="Mi score"
+                label={copy.myScore}
                 value={userAccountInfo?.total_score ?? 0}
-                helper="Puntos"
+                helper={copy.points}
               />
               <StatCard
-                label="Favoritos"
+                label={copy.favorites}
                 value={likedCount}
-                helper="Guardados"
+                helper={copy.saved}
               />
               <StatCard
-                label="Historial"
+                label={copy.history}
                 value={historialCount}
-                helper="Vistos"
+                helper={copy.viewed}
               />
               <StatCard
-                label="Target semanal"
+                label={copy.weeklyTarget}
                 value={targetSemanal}
-                helper="Objetivo"
+                helper={copy.goal}
               />
             </div>
           </div>
         </div>
 
-        <MvpNoticeCard publicName={userAccountInfo?.public_name} />
+        <MvpNoticeCard
+          publicName={userAccountInfo?.public_name}
+          language={language}
+        />
 
         <div className="space-y-4">
           <ProfileAccordion
-            title="Datos personales"
-            description="Información básica de tu cuenta."
+            title={copy.personalData}
+            description={copy.personalDataDescription}
             defaultOpen={true}
           >
             <div className="space-y-3">
-              <InfoRow label="Usuario" value={userInfo?.username || '-'} />
+              <InfoRow label={copy.username} value={userInfo?.username || '-'} />
               <InfoRow
-                label="Nombre público"
+                label={copy.publicName}
                 value={userAccountInfo?.public_name || '-'}
               />
-              <InfoRow label="E-mail" value={userInfo?.email || '-'} />
-              <InfoRow label="Nombre" value={userInfo?.first_name || '-'} />
-              <InfoRow label="Apellido" value={userInfo?.last_name || '-'} />
+              <InfoRow label={copy.email} value={userInfo?.email || '-'} />
               <InfoRow
-                label="Mi score"
-                value={`${userAccountInfo?.total_score ?? 0} puntos`}
+                label={copy.firstName}
+                value={userInfo?.first_name || '-'}
               />
+              <InfoRow label={copy.lastName} value={userInfo?.last_name || '-'} />
+              <InfoRow label={copy.myScore} value={copy.scoreValue} />
             </div>
           </ProfileAccordion>
 
           <ProfileAccordion
-            title="Perfil de empresa"
-            description="Contexto profesional y datos de organización."
+            title={copy.companyProfile}
+            description={copy.companyProfileDescription}
           >
             <div className="space-y-3">
-              <InfoRow label="Empresa" value={userInfo?.organization || '-'} />
               <InfoRow
-                label="Industria"
+                label={copy.company}
+                value={userInfo?.organization || '-'}
+              />
+              <InfoRow
+                label={copy.industry}
                 value={joinValues(userAccountInfo?.industry)}
               />
               <InfoRow
-                label="Función"
+                label={copy.function}
                 value={joinValues(userAccountInfo?.function)}
               />
-              <InfoRow label="Nivel" value={joinValues(userAccountInfo?.level)} />
-              <InfoRow label="Tipo de cuenta" value={accountType} />
+              <InfoRow label={copy.level} value={joinValues(userAccountInfo?.level)} />
+              <InfoRow label={copy.accountType} value={accountType} />
             </div>
           </ProfileAccordion>
 
           <ProfileAccordion
-            title="Contenido"
-            description="Acceso rápido a tu actividad y contribuciones."
+            title={copy.content}
+            description={copy.contentDescription}
           >
             <div className="space-y-3">
               <InfoRow
-                label="Contenido compartido"
-                value="Ir al colaborador"
+                label={copy.sharedContent}
+                value={copy.goToCollaborator}
                 action={() => navigate('/content')}
               />
+              <InfoRow label={copy.myFavorites} value={copy.sharedSaved} />
               <InfoRow
-                label="Mis favoritos"
-                value={`${likedCount} guardados`}
-              />
-              <InfoRow
-                label="Mi historial"
-                value={
-                  historialCount > 0
-                    ? `${historialCount} vistos`
-                    : 'Ver historial'
-                }
+                label={copy.myHistory}
+                value={copy.historyValue}
                 action={() => navigate('/history')}
               />
             </div>
           </ProfileAccordion>
 
           <ProfileAccordion
-            title="Preferencias"
-            description="Ajustes personales y configuración del coach."
+            title={copy.preferences}
+            description={copy.preferencesDescription}
           >
             <div className="space-y-3">
-              <PreferenceRow label="Idioma">
+              <PreferenceRow label={copy.language}>
                 <OptionChip
                   active={language === 'es'}
                   onClick={() => setLanguage('es')}
                 >
-                  Español
+                  {copy.spanish}
                 </OptionChip>
                 <OptionChip
                   active={language === 'en'}
                   onClick={() => setLanguage('en')}
                 >
-                  English
+                  {copy.english}
                 </OptionChip>
               </PreferenceRow>
 
               <InfoRow
-                label="Modo claro"
-                value={darkMode ? 'OFF' : 'ON'}
+                label={copy.lightMode}
+                value={darkMode ? copy.off : copy.on}
                 action={() => setDarkMode((current) => !current)}
               />
 
-              <PreferenceRow label="Frecuencia de desafío semanal">
+              <PreferenceRow label={copy.weeklyChallengeFrequency}>
                 {opcionesFrecuencia.map((option) => {
                   const blocked = option !== 5;
 
@@ -661,9 +869,7 @@ const Profile: FunctionComponent = () => {
                       key={option}
                       active={frecDesafio === option}
                       disabled={blocked}
-                      title={
-                        blocked ? 'Temporalmente no disponible' : undefined
-                      }
+                      title={blocked ? copy.temporarilyUnavailable : undefined}
                       onClick={() => setFrecDesafio(option)}
                     >
                       {option}
@@ -672,7 +878,7 @@ const Profile: FunctionComponent = () => {
                 })}
               </PreferenceRow>
 
-              <PreferenceRow label="Preguntas por desafío">
+              <PreferenceRow label={copy.questionsPerChallenge}>
                 {opcionesPreguntas.map((option) => {
                   const blocked = ![5, 10].includes(option);
 
@@ -681,9 +887,7 @@ const Profile: FunctionComponent = () => {
                       key={option}
                       active={numPreguntas === option}
                       disabled={blocked}
-                      title={
-                        blocked ? 'Temporalmente no disponible' : undefined
-                      }
+                      title={blocked ? copy.temporarilyUnavailable : undefined}
                       onClick={() => setNumPreguntas(option)}
                     >
                       {option}
@@ -693,48 +897,48 @@ const Profile: FunctionComponent = () => {
               </PreferenceRow>
 
               <InfoRow
-                label="Target semanal"
-                value={`${targetSemanal} puntos`}
+                label={copy.weeklyTarget}
+                value={copy.weeklyTargetValue}
               />
 
-              <PreferenceRow label="Personalidad de mi Coach AI">
+              <PreferenceRow label={copy.coachPersonality}>
                 {COACH_PERSONALITIES.map((option) => (
                   <OptionChip
                     key={option.id}
                     active={personalidadCoach === option.id}
                     onClick={() => setPersonalidadCoach(option.id)}
                   >
-                    {option.emoji} {option.label}
+                    {option.emoji} {option.label[language]}
                   </OptionChip>
                 ))}
               </PreferenceRow>
 
               <InfoRow
-                label="Recomendaciones de mi Coach AI"
-                value="Ver"
+                label={copy.coachRecommendations}
+                value={copy.view}
                 action={() => navigate('/coach')}
               />
             </div>
           </ProfileAccordion>
 
           <ProfileAccordion
-            title="Centro de ayuda"
-            description="Soporte, seguridad y salida de sesión."
+            title={copy.helpCenter}
+            description={copy.helpCenterDescription}
           >
             <div className="space-y-3">
               <InfoRow
-                label="Soporte"
-                value="Abrir centro de ayuda"
+                label={copy.support}
+                value={copy.openHelpCenter}
                 action={() => window.open('https://openkx.ai/support', '_blank')}
               />
               <InfoRow
-                label="Privacidad y seguridad"
-                value="Cambiar contraseña"
+                label={copy.privacyAndSecurity}
+                value={copy.changePassword}
                 action={() => navigate('./change-password')}
               />
               <InfoRow
-                label="Cerrar sesión"
-                value="Salir"
+                label={copy.signOut}
+                value={copy.exit}
                 action={handleLogout}
                 danger={true}
               />
