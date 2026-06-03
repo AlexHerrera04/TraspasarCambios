@@ -20,7 +20,7 @@ const ProtectedRoute = (props: any) => {
         setUserID(newUserID);
       }
     }
-  }, [token, userID]);
+  }, [token, userID, setUserID]);
 
   React.useEffect(() => {
     if (token) {
@@ -28,28 +28,34 @@ const ProtectedRoute = (props: any) => {
         logout();
         setUserID(null);
         location?.pathname !== '/login' && props?.router?.navigate('/login');
-      } else {
-        location?.pathname === '/' && props?.router?.navigate('/home');
+        return;
+      }
+
+      if (location?.pathname === '/') {
+        props?.router?.navigate('/home');
+        return;
       }
     } else {
       logout();
       setUserID(null);
       props.router.navigate('/login');
+      return;
     }
 
-    const path = props?.router?.location?.pathname;
-    //console.log('path', path);
+    const path = props?.router?.location?.pathname || '';
 
     if (
       userAccountInfo?.type === 'expert' &&
       !path.includes('/content') &&
+      !path.includes('/profile') &&
+      !path.includes('/notificaciones') &&
+      !path.includes('/onboarding') &&
       !path.includes('/explorer/')
     ) {
       props.router.navigate('/content');
     }
-  }, [location, token]);
+  }, [location, token, logout, props, setUserID, userAccountInfo]);
 
-  // If Authenticated, render the child routes
   return <Outlet />;
 };
 

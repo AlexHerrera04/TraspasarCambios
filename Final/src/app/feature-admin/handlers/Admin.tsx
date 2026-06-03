@@ -30,6 +30,8 @@ import {
 
 import ReportTable from '../components/Reports';
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(() => {
@@ -38,6 +40,76 @@ const Admin: React.FC = () => {
     return lastTab || 'Usuarios';
   });
   const [searchTerm, setSearchTerm] = useState('');
+
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          tabs: {
+            Usuarios: 'Users',
+            Metas: 'Goals',
+            Rutas: 'Routes',
+            Organización: 'Organization',
+            Informes: 'Reports',
+            'Coach Adm': 'Coach Adm',
+          },
+          coachTitle: 'Admin Coach',
+          coachDescription:
+            'Open the coach with organizational scope to analyze a specific person.',
+          goToCoach: 'Go to Admin Coach',
+          search: {
+            Usuarios: 'Search Users...',
+            Metas: 'Search Goals...',
+            Rutas: 'Search Routes...',
+            Organización: 'Search Organizations...',
+            Informes: 'Search Reports...',
+            'Coach Adm': 'Search Admin Coach...',
+          },
+          toastUnavailable: 'Feature not available',
+          toastInProgress: 'Feature in development',
+          add: {
+            CoachAdm: 'Open Admin Coach',
+            Rutas: 'Add Learning Route',
+            Organización: 'Add Organization',
+            Usuarios: 'Add User',
+            Metas: 'Add Goal',
+            Informes: 'Add Report',
+          },
+        }
+      : {
+          tabs: {
+            Usuarios: 'Usuarios',
+            Metas: 'Metas',
+            Rutas: 'Rutas',
+            Organización: 'Organización',
+            Informes: 'Informes',
+            'Coach Adm': 'Coach Adm',
+          },
+          coachTitle: 'Coach Adm',
+          coachDescription:
+            'Abre el coach con alcance organizacional para analizar a una persona concreta.',
+          goToCoach: 'Ir a Coach Adm',
+          search: {
+            Usuarios: 'Buscar Usuarios...',
+            Metas: 'Buscar Metas...',
+            Rutas: 'Buscar Rutas...',
+            Organización: 'Buscar Organizaciones...',
+            Informes: 'Buscar Informes...',
+            'Coach Adm': 'Buscar Coach Adm...',
+          },
+          toastUnavailable: 'Funcionalidad no disponible',
+          toastInProgress: 'Funcionalidad en desarrollo',
+          add: {
+            CoachAdm: 'Abrir Coach Adm',
+            Rutas: 'Agregar Ruta de Aprendizaje',
+            Organización: 'Agregar Organización',
+            Usuarios: 'Agregar Usuario',
+            Metas: 'Agregar Metas',
+            Informes: 'Agregar Informes',
+          },
+        };
 
   const { userInfo } = useUser();
   const { organizations, isLoading: orgsLoading } = useOrganizations();
@@ -51,32 +123,32 @@ const Admin: React.FC = () => {
 
   const data = [
     {
-      label: 'Usuarios',
+      label: copy.tabs.Usuarios,
       value: 'Usuarios',
       icon: userIcon,
     },
     {
-      label: 'Metas',
+      label: copy.tabs.Metas,
       value: 'Metas',
       icon: goalsIcon,
     },
     {
-      label: 'Rutas',
+      label: copy.tabs.Rutas,
       value: 'Rutas',
       IconComponent: AcademicCapIcon,
     },
     {
-      label: 'Organización',
+      label: copy.tabs.Organización,
       value: 'Organización',
       icon: organizationIcon,
     },
     {
-      label: 'Informes',
+      label: copy.tabs.Informes,
       value: 'Informes',
       icon: metricIcon,
     },
     {
-      label: 'Coach Adm',
+      label: copy.tabs['Coach Adm'],
       value: 'Coach Adm',
       icon: botIcon,
       isCoach: true,
@@ -124,12 +196,11 @@ const Admin: React.FC = () => {
         return (
           <div className="rounded-2xl border border-white/10 bg-[#1e2633] p-8 text-white">
             <div className="flex items-center gap-4">
-              <img src={botIcon} alt="Coach Adm" className="h-12 w-12" />
+              <img src={botIcon} alt={copy.coachTitle} className="h-12 w-12" />
               <div>
-                <h2 className="text-2xl font-semibold">Coach Adm</h2>
+                <h2 className="text-2xl font-semibold">{copy.coachTitle}</h2>
                 <p className="mt-1 text-sm text-gray-300">
-                  Abre el coach con alcance organizacional para analizar a una
-                  persona concreta.
+                  {copy.coachDescription}
                 </p>
               </div>
             </div>
@@ -140,7 +211,7 @@ const Admin: React.FC = () => {
                 onClick={() => navigate('/coach?admin=1')}
                 className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-500"
               >
-                Ir a Coach Adm
+                {copy.goToCoach}
               </button>
             </div>
           </div>
@@ -148,6 +219,20 @@ const Admin: React.FC = () => {
       default:
         return <UserTable searchTerm={searchTerm.toLowerCase()} />;
     }
+  };
+
+  const getSearchPlaceholder = () => {
+    return copy.search[activeTab as keyof typeof copy.search] || copy.search.Usuarios;
+  };
+
+  const getAddButtonLabel = () => {
+    if (activeTab === 'Coach Adm') return copy.add.CoachAdm;
+    if (activeTab === 'Rutas') return copy.add.Rutas;
+    if (activeTab === 'Organización') return copy.add.Organización;
+    if (activeTab === 'Usuarios') return copy.add.Usuarios;
+    if (activeTab === 'Metas') return copy.add.Metas;
+    if (activeTab === 'Informes') return copy.add.Informes;
+    return copy.add.Usuarios;
   };
 
   const content = (
@@ -204,19 +289,7 @@ const Admin: React.FC = () => {
               <input
                 type="text"
                 className="w-full rounded-lg border border-gray-600 bg-[#1e2633] px-4 py-2 pl-10 text-white focus:border-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-900"
-                placeholder={`Buscar ${
-                  activeTab === 'Organización'
-                    ? 'Organizaciones'
-                    : activeTab === 'Metas'
-                      ? 'Metas'
-                      : activeTab === 'Rutas'
-                        ? 'Rutas'
-                        : activeTab === 'Usuarios'
-                          ? 'Usuarios'
-                          : activeTab === 'Informes'
-                            ? 'Informes'
-                            : 'Coach Adm'
-                }...`}
+                placeholder={getSearchPlaceholder()}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -225,7 +298,7 @@ const Admin: React.FC = () => {
             <button
               onClick={() => {
                 if (activeTab === 'Usuarios') {
-                  toast('Funcionalidad no disponible');
+                  toast(copy.toastUnavailable);
                 } else if (activeTab === 'Organización') {
                   navigate('/admin/organization');
                 } else if (activeTab === 'Metas') {
@@ -233,7 +306,7 @@ const Admin: React.FC = () => {
                 } else if (activeTab === 'Rutas') {
                   navigate('/admin/learning-routes');
                 } else if (activeTab === 'Informes') {
-                  toast('Funcionalidad en desarrollo');
+                  toast(copy.toastInProgress);
                 } else if (activeTab === 'Coach Adm') {
                   navigate('/coach?admin=1');
                 }
@@ -242,17 +315,7 @@ const Admin: React.FC = () => {
             >
               <PlusIcon className="h-5 w-5" />
               <span className="whitespace-nowrap text-sm">
-                {activeTab === 'Coach Adm'
-                  ? 'Abrir Coach Adm'
-                  : activeTab === 'Rutas'
-                    ? 'Agregar Ruta de Aprendizaje'
-                    : `Agregar ${
-                        activeTab === 'Organización'
-                          ? 'Organización'
-                          : activeTab === 'Usuarios'
-                            ? 'Usuario'
-                            : activeTab
-                      }`}
+                {getAddButtonLabel()}
               </span>
             </button>
           </div>

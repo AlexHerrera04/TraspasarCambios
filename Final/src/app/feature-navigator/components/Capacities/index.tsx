@@ -37,6 +37,7 @@ export interface Capacity {
   value: number;
 }
 
+const APP_LANGUAGE_KEY = 'appLanguage';
 const VALUE_TO_FILTER_CAPACITIES: number = 20;
 
 const ProgressChart = ({ porcentage }: { porcentage: number }) => {
@@ -149,12 +150,61 @@ const Capacities = (props: any) => {
   const { capacities, isFetching, isQuizCompleted } = props;
   const { userAccountInfo } = useUser();
   const navigate = useNavigate();
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          myCapacities: 'My capacities',
+          capacityGroup: 'Competency Group',
+          selectOption: 'Select an option',
+          scope: 'Scope',
+          scopeAll: 'All',
+          myKeyCompetencies: 'My key competencies',
+          benchmark: 'Benchmark',
+          noData: 'No data to display with the current filters',
+          unlockPotential:
+            'Unlock your full potential! Take our digital quiz to help us understand your needs and improve your skills.',
+          assessmentPrompt:
+            'Choose other competencies for which you want to complete the Assessment:',
+          selectAssessment: 'Select an Assessment',
+          competencies: 'Competencies:',
+          level1: 'Level 1',
+          level2: 'Level 2',
+          level3: 'Level 3',
+          level4: 'Level 4',
+          level5: 'Level 5',
+          crossLevel: 'Cross-Level (All)',
+        }
+      : {
+          myCapacities: 'Mis competencias',
+          capacityGroup: 'Grupo de Competencia',
+          selectOption: 'Seleccionar una opción',
+          scope: 'Alcance',
+          scopeAll: 'Todas',
+          myKeyCompetencies: 'Mis competencias clave',
+          benchmark: 'Benchmark',
+          noData: 'No hay datos para mostrar con los filtros actuales',
+          unlockPotential:
+            '¡Desbloquea tu máximo potencial! Realiza nuestro quiz digital para ayudarnos a entender tus necesidades y mejorar tus habilidades.',
+          assessmentPrompt:
+            'Escoge otras competencias sobre las cuales quieras completar el Assessment:',
+          selectAssessment: 'Selecciona un Assessment',
+          competencies: 'Competencias:',
+          level1: 'Nivel 1',
+          level2: 'Nivel 2',
+          level3: 'Nivel 3',
+          level4: 'Nivel 4',
+          level5: 'Nivel 5',
+          crossLevel: 'Cross-Level (All)',
+        };
+
   const [selectedRoles, setSelectedRoles] = React.useState<any>([]);
   const [selectedCapacities, setSelectedCapacities] = React.useState<any>([]);
   const [filteredCapacities, setFilteredCapacities] = React.useState<any>([]);
   const [selectedCapacityGroup, setSelectedCapacityGroup] = React.useState<any>([]);
   const [selectedScope, setSelectedScope] = React.useState<any>({
-    label: 'Todas',
+    label: copy.scopeAll,
     value: 'all',
   });
 
@@ -201,7 +251,7 @@ const Capacities = (props: any) => {
     labels: labels,
     datasets: [
       {
-        label: 'My capacities',
+        label: copy.myCapacities,
         data: values,
         backgroundColor: 'rgba(255, 255, 255, 0.10)',
         borderColor: 'rgba(255, 255, 255, 0.80)',
@@ -212,27 +262,27 @@ const Capacities = (props: any) => {
 
   const roles = [
     {
-      label: 'Nivel 1',
+      label: copy.level1,
       value: 'Nivel 1',
     },
     {
-      label: 'Nivel 2',
+      label: copy.level2,
       value: 'Nivel 2',
     },
     {
-      label: 'Nivel 3',
+      label: copy.level3,
       value: 'Nivel 3',
     },
     {
-      label: 'Nivel 4',
+      label: copy.level4,
       value: 'Nivel 4',
     },
     {
-      label: 'Nivel 5',
+      label: copy.level5,
       value: 'Nivel 5',
     },
     {
-      label: 'Cross-Level (All)',
+      label: copy.crossLevel,
       value: 'Cross-Level (All)',
     },
   ];
@@ -259,7 +309,7 @@ const Capacities = (props: any) => {
 
     const datasets = [];
     datasets.push({
-      label: 'My capacities',
+      label: copy.myCapacities,
       data: values,
       backgroundColor: 'rgba(255, 255, 255, 0.10)',
       borderColor: 'rgba(255, 255, 255, 0.80)',
@@ -401,7 +451,7 @@ const Capacities = (props: any) => {
 
     return (
       <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4 mt-20">Mis competencias clave</h2>
+        <h2 className="text-2xl font-bold mb-4 mt-20">{copy.myKeyCompetencies}</h2>
         <div className="bg-white/5 rounded-2xl p-8 w-full">
           <div className="flex flex-wrap gap-3 justify-center items-center">
             {[...userCapacities]
@@ -418,7 +468,7 @@ const Capacities = (props: any) => {
                       pointer-events-none
                     `}
                   >
-                    <div className="font-semibold mb-2">Competencias:</div>
+                    <div className="font-semibold mb-2">{copy.competencies}</div>
                     <ul className="list-disc list-inside">
                       {layerZeroCapacitiesQuery.data
                         .filter(
@@ -446,7 +496,7 @@ const Capacities = (props: any) => {
 
   return (
     <>
-      <h2 className="text-3xl not-italic font-bold">Mis competencias</h2>
+      <h2 className="text-3xl not-italic font-bold">{copy.myCapacities}</h2>
       <div
         className={
           'my-5 flex justify-around gap-8 flex-wrap ' +
@@ -461,7 +511,7 @@ const Capacities = (props: any) => {
                   className="block mb-2 text-sm text-gray-300"
                   htmlFor="username"
                 >
-                  Grupo de Competencia
+                  {copy.capacityGroup}
                 </label>
 
                 <SelectInput
@@ -471,7 +521,7 @@ const Capacities = (props: any) => {
                   size="lg"
                   value={selectedCapacityGroup}
                   onChange={handleCapacityGroupChange}
-                  placeholder="Seleccionar una opción"
+                  placeholder={copy.selectOption}
                   options={capacityGroup}
                 ></SelectInput>
               </div>
@@ -481,7 +531,7 @@ const Capacities = (props: any) => {
                   className="block mb-2 text-sm text-gray-300"
                   htmlFor="username"
                 >
-                  Alcance
+                  {copy.scope}
                 </label>
 
                 <SelectInput
@@ -490,11 +540,11 @@ const Capacities = (props: any) => {
                   size="lg"
                   value={selectedScope}
                   onChange={handleScopeChange}
-                  placeholder="Seleccionar una opción"
+                  placeholder={copy.selectOption}
                   options={[
-                    { label: 'Todas', value: 'all' },
+                    { label: copy.scopeAll, value: 'all' },
                     {
-                      label: 'Mis competencias clave',
+                      label: copy.myKeyCompetencies,
                       value: 'my_competencies',
                     },
                   ]}
@@ -506,7 +556,7 @@ const Capacities = (props: any) => {
                   className="block mb-2 text-sm text-gray-300"
                   htmlFor="username"
                 >
-                  Benchmark
+                  {copy.benchmark}
                 </label>
 
                 <SelectInput
@@ -516,7 +566,7 @@ const Capacities = (props: any) => {
                   size="lg"
                   value={selectedRoles}
                   onChange={handleRoleChange}
-                  placeholder="Seleccionar una opción"
+                  placeholder={copy.selectOption}
                   options={roles}
                 ></SelectInput>
               </div>
@@ -525,7 +575,7 @@ const Capacities = (props: any) => {
               {isQuizCompleted && data && (
                 data.labels.length === 0 ? (
                   <div className="h-[600px] flex items-center justify-center text-gray-400">
-                    No hay datos para mostrar con los filtros actuales
+                    {copy.noData}
                   </div>
                 ) : (
                   <Radar data={data} options={options} />
@@ -539,13 +589,12 @@ const Capacities = (props: any) => {
       </div>
       {!isQuizCompleted && (
         <div className="flex justify-around gap-8 flex-wrap mb-3 p-5 border border-tertiary bg-tertiary/30 rounded-lg">
-          ¡Desbloquea tu máximo potencial! Realiza nuestro quiz digital para
-          ayudarnos a entender tus necesidades y mejorar tus habilidades.
+          {copy.unlockPotential}
         </div>
       )}
       <div className="flex items-center justify-center gap-4 mt-8">
         <p className="text-base">
-          Escoge otras competencias sobre las cuales quieras completar el Assessment:
+          {copy.assessmentPrompt}
         </p>
         <Button
           type="submit"
@@ -555,7 +604,7 @@ const Capacities = (props: any) => {
             navigate('./selector');
           }}
         >
-          Selecciona un Assessment
+          {copy.selectAssessment}
         </Button>
       </div>
       <KeyCompetencies capacities={userAccountInfo?.capacity} />

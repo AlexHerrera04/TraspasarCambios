@@ -18,11 +18,159 @@ import { ContributionForm } from '../types';
 import { contributionsService } from '../services/contributionsService';
 import { unmapObjectAttributes } from '../utils/attributeMapper';
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const CreateContribution: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const { id } = useParams();
+
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          validation: {
+            titleRequired: 'Title is required',
+            titleMax: 'Maximum 100 characters',
+            descriptionRequired: 'Description is required',
+            descriptionMax: 'Maximum 250 characters',
+            invalidEmail: 'Invalid email',
+            teamMembersMax: 'Maximum 200 characters',
+            impactedAreasMax: 'Maximum 200 characters',
+            requiredFields:
+              'Please complete the required fields: Title, Description, Start Date and Estimated End Date',
+          },
+          categoryOptions: [
+            { value: 'innovation', label: 'Innovation' },
+            { value: 'training', label: 'Training' },
+            { value: 'process_improvement', label: 'Process Improvement' },
+            { value: 'other', label: 'Other' },
+          ],
+          statusOptions: [
+            { value: 'in_progress', label: 'In Progress' },
+            { value: 'completed', label: 'Completed' },
+            { value: 'paused', label: 'Paused' },
+          ],
+          generalInfo: 'General Information',
+          helperIntro:
+            'Complete the key details to identify and contextualize the project where you contributed:',
+          projectNameTitle: 'Project name:',
+          projectNameText:
+            'Give it a clear and representative title (max. 100 characters).',
+          shortDescriptionTitle: 'Brief description:',
+          shortDescriptionText:
+            'Summarize the objective and scope in a few words (max. 250 characters).',
+          roleTitle: 'Role or function:',
+          roleText: 'Describe your main role in this project.',
+          categoryTitle: 'Category:',
+          categoryText:
+            'Select the type of project (Innovation, Training, etc.).',
+          datesTitle: 'Dates:',
+          datesText:
+            'Indicate the start date and estimated end date (dd/mm/yyyy format).',
+          leaderTitle: 'Project leader:',
+          leaderText:
+            'Name, area, and email of the responsible person.',
+          currentStatusTitle: 'Current status:',
+          currentStatusText:
+            'Choose one of: In progress, Completed, or Paused.',
+          fields: {
+            projectName: 'Project name',
+            briefDescription: 'Brief description',
+            describeRole: 'Describe your role or function in the project',
+            category: 'Category',
+            startDate: 'Start date',
+            estimatedEndDate: 'Estimated end date',
+            projectLeader: 'Project Leader',
+            name: 'First name',
+            lastName: 'Last name',
+            area: 'Area',
+            email: 'Email',
+            currentStatus: 'Current status',
+          },
+          buttons: {
+            cancel: 'Cancel',
+            next: 'Next',
+            confirmCancel: 'Confirm cancel?',
+            unsavedChanges:
+              'Unsaved changes will be lost. Do you want to continue?',
+            keepEditing: 'No, continue editing',
+            yesCancel: 'Yes, cancel',
+          },
+        }
+      : {
+          validation: {
+            titleRequired: 'El título es requerido',
+            titleMax: 'Máximo 100 caracteres',
+            descriptionRequired: 'La descripción es requerida',
+            descriptionMax: 'Máximo 250 caracteres',
+            invalidEmail: 'Email inválido',
+            teamMembersMax: 'Máximo 200 caracteres',
+            impactedAreasMax: 'Máximo 200 caracteres',
+            requiredFields:
+              'Por favor complete los campos obligatorios: Título, Descripción, Fecha de Inicio y Fecha estimada de finalizacion',
+          },
+          categoryOptions: [
+            { value: 'innovation', label: 'Innovación' },
+            { value: 'training', label: 'Formación' },
+            { value: 'process_improvement', label: 'Mejora de Procesos' },
+            { value: 'other', label: 'Otro' },
+          ],
+          statusOptions: [
+            { value: 'in_progress', label: 'En Progreso' },
+            { value: 'completed', label: 'Completado' },
+            { value: 'paused', label: 'En Pausa' },
+          ],
+          generalInfo: 'Información General',
+          helperIntro:
+            'Completa los datos clave para identificar y contextualizar el proyecto donde has contribuido:',
+          projectNameTitle: 'Nombre del proyecto:',
+          projectNameText:
+            'Dale un título claro y representativo (máx. 100 caracteres).',
+          shortDescriptionTitle: 'Descripción breve:',
+          shortDescriptionText:
+            'Resume objetivo y alcance en pocas palabras (máx. 250 caracteres).',
+          roleTitle: 'Rol o función:',
+          roleText: 'Describe tu rol principal para este proyecto.',
+          categoryTitle: 'Categoría:',
+          categoryText:
+            'Selecciona el tipo de proyecto (Innovación, Formación, etc.).',
+          datesTitle: 'Fechas:',
+          datesText:
+            'Indica inicio y final estimado (formato dd/mm/aaaa).',
+          leaderTitle: 'Líder del proyecto:',
+          leaderText:
+            'Nombre, área y correo de la persona responsable.',
+          currentStatusTitle: 'Estado actual:',
+          currentStatusText:
+            'Elige entre: En progreso, Completado o En pausa.',
+          fields: {
+            projectName: 'Nombre del proyecto',
+            briefDescription: 'Descripción breve',
+            describeRole: 'Describe tu rol o función en el proyecto',
+            category: 'Categoría',
+            startDate: 'Fecha de inicio',
+            estimatedEndDate: 'Fecha estimada de finalización',
+            projectLeader: 'Líder de Proyecto',
+            name: 'Nombre',
+            lastName: 'Apellido',
+            area: 'Área',
+            email: 'Correo Electrónico',
+            currentStatus: 'Status actual',
+          },
+          buttons: {
+            cancel: 'Cancelar',
+            next: 'Siguiente',
+            confirmCancel: '¿Confirmar cancelar?',
+            unsavedChanges:
+              'Los cambios no guardados se perderán. ¿Desea continuar?',
+            keepEditing: 'No, continuar editando',
+            yesCancel: 'Sí, cancelar',
+          },
+        };
 
   const formik = useFormik<ContributionForm>({
     initialValues: {
@@ -42,44 +190,41 @@ const CreateContribution: React.FC = () => {
     },
     validationSchema: Yup.object({
       title: Yup.string()
-        .required('El título es requerido')
-        .max(100, 'Máximo 100 caracteres'),
+        .required(copy.validation.titleRequired)
+        .max(100, copy.validation.titleMax),
       description: Yup.string()
-        .required('La descripción es requerida')
-        .max(250, 'Máximo 250 caracteres'),
+        .required(copy.validation.descriptionRequired)
+        .max(250, copy.validation.descriptionMax),
       category: Yup.string(),
       start_date: Yup.string(),
       end_date: Yup.string(),
       project_leader: Yup.object({
         name: Yup.string(),
         area: Yup.string(),
-        email: Yup.string().email('Email inválido'),
+        email: Yup.string().email(copy.validation.invalidEmail),
       }),
-      team_members: Yup.string().max(200, 'Máximo 200 caracteres'),
-      impacted_areas: Yup.string().max(200, 'Máximo 200 caracteres'),
+      team_members: Yup.string().max(200, copy.validation.teamMembersMax),
+      impacted_areas: Yup.string().max(200, copy.validation.impactedAreasMax),
       status: Yup.string(),
     }),
     onSubmit: async (values) => {
       try {
         setLoading(true);
         if (!values.title || !values.description || !values.start_date || !values.end_date) {
-          toast.error(
-            'Por favor complete los campos obligatorios: Título, Descripción, Fecha de Inicio y Fecha estimada de finalizacion',
-            {
-              position: 'top-right',
-              autoClose: 5000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-              progress: undefined,
-              theme: 'dark',
-              style: {
-                backgroundColor: '#ef4444',
-                color: 'white',
-              },
-            }
-          );
+          toast.error(copy.validation.requiredFields, {
+            position: 'top-right',
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: 'dark',
+            style: {
+              backgroundColor: '#ef4444',
+              color: 'white',
+            },
+          });
           return;
         }
         persistenceService.saveStepData('general', values);
@@ -111,40 +256,27 @@ const CreateContribution: React.FC = () => {
   }
 
   useEffect(() => {
-    // Try to load from contributionDraft in localStorage first
     const contributionDraftStr = localStorage.getItem('contributionDraft');
     try {
       const contributionDraft = JSON.parse(contributionDraftStr);
-      // Map the nested data to form format
-      formik.setValues( (contributionDraft.general || {}));
+      formik.setValues((contributionDraft.general || {}));
     } catch (error) {
       console.error('Error parsing contributionDraft from localStorage:', error);
     }
   }, [])
 
-  // Autoguardado cuando cambian los valores
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (formik.dirty) {
         persistenceService.saveStepData('general', formik.values);
       }
-    }, 1000); // Guardar después de 1 segundo de inactividad
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [formik.values]);
 
-  const categoryOptions = [
-    { value: 'innovation', label: 'Innovación' },
-    { value: 'training', label: 'Formación' },
-    { value: 'process_improvement', label: 'Mejora de Procesos' },
-    { value: 'other', label: 'Otro' },
-  ];
-
-  const statusOptions = [
-    { value: 'in_progress', label: 'En Progreso' },
-    { value: 'completed', label: 'Completado' },
-    { value: 'paused', label: 'En Pausa' },
-  ];
+  const categoryOptions = copy.categoryOptions;
+  const statusOptions = copy.statusOptions;
 
   const [nothing, setNothing] = useState(false);
 
@@ -162,7 +294,6 @@ const CreateContribution: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row items-start justify-between">
           <div className="w-full lg:w-[49%] px-7 mb-11">
-            
             <div className="relative mb-6">
               <Typography
                 variant="h3"
@@ -175,48 +306,48 @@ const CreateContribution: React.FC = () => {
                 className="bg-gray-600 w-full [&_div]:bg-primary-600"
               />
             </div>
-            <h2 className="text-4xl text-white">Información General</h2>
+            <h2 className="text-4xl text-white">{copy.generalInfo}</h2>
             <p className="text-gray-400 mb-4 mt-4">
-              Completa los datos clave para identificar y contextualizar el proyecto donde has contribuido:
+              {copy.helperIntro}
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Nombre del proyecto:</b>
-              <p className="text-gray-400">Dale un título claro y representativo (máx. 100 caracteres).</p>
+              <b>{copy.projectNameTitle}</b>
+              <p className="text-gray-400">{copy.projectNameText}</p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Descripción breve:</b>
+              <b>{copy.shortDescriptionTitle}</b>
               <p className="text-gray-400">
-                Resume objetivo y alcance en pocas palabras (máx. 250 caracteres).
+                {copy.shortDescriptionText}
               </p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Rol o función:</b>
+              <b>{copy.roleTitle}</b>
               <p className="text-gray-400">
-                Describe tu rol principal para este proyecto.
+                {copy.roleText}
               </p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Categoría:</b>
+              <b>{copy.categoryTitle}</b>
               <p className="text-gray-400">
-                Selecciona el tipo de proyecto (Innovación, Formación, etc.).
+                {copy.categoryText}
               </p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Fechas:</b>
+              <b>{copy.datesTitle}</b>
               <p className="text-gray-400">
-                Indica inicio y final estimado (formato dd/mm/aaaa).
+                {copy.datesText}
               </p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Líder del proyecto:</b>
+              <b>{copy.leaderTitle}</b>
               <p className="text-gray-400">
-                Nombre, área y correo de la persona responsable.
+                {copy.leaderText}
               </p>
             </p>
             <p className="text-gray-400 mb-2">
-              <b>Estado actual:</b>
+              <b>{copy.currentStatusTitle}</b>
               <p className="text-gray-400">
-                Elige entre: En progreso, Completado o En pausa.
+                {copy.currentStatusText}
               </p>
             </p>
           </div>
@@ -225,7 +356,7 @@ const CreateContribution: React.FC = () => {
             <form onSubmit={formik.handleSubmit} className="space-y-6">
               <div>
                 <label className="block mb-2 text-sm text-gray-300">
-                  Nombre del proyecto <span className="text-red-500">*</span>
+                  {copy.fields.projectName} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -246,7 +377,7 @@ const CreateContribution: React.FC = () => {
 
               <div>
                 <label className="block mb-2 text-sm text-gray-300">
-                  Descripción breve <span className="text-red-500">*</span>
+                  {copy.fields.briefDescription} <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   maxLength={250}
@@ -267,7 +398,7 @@ const CreateContribution: React.FC = () => {
 
               <div>
                 <label className="block mb-2 text-sm text-gray-300">
-                  Describe tu rol o función en el proyecto
+                  {copy.fields.describeRole}
                 </label>
                 <input
                   maxLength={200}
@@ -278,7 +409,7 @@ const CreateContribution: React.FC = () => {
 
               <div className="w-[49%]">
                 <label className="block mb-2 text-sm text-gray-300">
-                  Categoría <span className="text-red-500">*</span>
+                  {copy.fields.category} <span className="text-red-500">*</span>
                 </label>
                 <SelectLine
                   label=""
@@ -298,7 +429,7 @@ const CreateContribution: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 place-content-center">
                 <div>
                   <label className="block mb-2 text-sm text-gray-300">
-                    Fecha de inicio <span className="text-red-500">*</span>
+                    {copy.fields.startDate} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -308,7 +439,7 @@ const CreateContribution: React.FC = () => {
                 </div>
                 <div>
                   <label className="block mb-2 text-sm text-gray-300">
-                    Fecha estimada de finalización <span className="text-red-500">*</span>
+                    {copy.fields.estimatedEndDate} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -320,12 +451,12 @@ const CreateContribution: React.FC = () => {
 
               <fieldset className="space-y-4 border-2 padding-top: 0; border-white rounded-lg p-6">
                 <legend className="px-2 block mb-2 text-sm text-gray-300">
-                  Líder de Proyecto
+                  {copy.fields.projectLeader}
                 </legend>
                 <div className="flex gap-5 !-mt-4">
                   <div className="w-[50%]">
                     <label className="block mb-2 text-sm w-[50%] text-gray-300">
-                      Nombre
+                      {copy.fields.name}
                     </label>
                     <input
                       type="text"
@@ -335,7 +466,7 @@ const CreateContribution: React.FC = () => {
                   </div>
                   <div className="w-[50%]">
                     <label className="block mb-2 text-sm text-gray-300">
-                      Apellido
+                      {copy.fields.lastName}
                     </label>
                     <input
                       type="text"
@@ -347,7 +478,7 @@ const CreateContribution: React.FC = () => {
                 <div className="flex gap-5">
                   <div className="w-[50%]">
                     <label className="block mb-2 text-sm text-gray-300">
-                      Área
+                      {copy.fields.area}
                     </label>
                     <input
                       type="text"
@@ -357,7 +488,7 @@ const CreateContribution: React.FC = () => {
                   </div>
                   <div className="w-[50%]">
                     <label className="block mb-2 text-sm text-gray-300">
-                      Correo Electrónico
+                      {copy.fields.email}
                     </label>
                     <input
                       type="email"
@@ -368,21 +499,9 @@ const CreateContribution: React.FC = () => {
                 </div>
               </fieldset>
 
-              {/* <div>
-                <label className="block mb-2 text-sm text-gray-300">
-                  Áreas/departamentos impactados
-                </label>
-                <textarea
-                  maxLength={200}
-                  {...formik.getFieldProps('impacted_areas')}
-                  className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600"
-                  rows={3}
-                />
-              </div> */}
-
               <div className="w-[49%]">
                 <label className="block mb-2 t-ext-sm text-gray-300">
-                  Status actual
+                  {copy.fields.currentStatus}
                 </label>
                 <SelectLine
                   label=""
@@ -403,12 +522,12 @@ const CreateContribution: React.FC = () => {
                   type="button"
                   outline
                 >
-                  Cancelar
+                  {copy.buttons.cancel}
                 </Button>
             
                 <Button type="submit" disabled={loading} primary>
                   {loading ? <Spinner className="h-4 w-4 mr-2" /> : null}
-                  Siguiente
+                  {copy.buttons.next}
                 </Button>
               </div>
             </form>
@@ -416,16 +535,15 @@ const CreateContribution: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de confirmación de cancelar */}
       <Dialog
         open={showConfirmCancel}
         handler={() => setShowConfirmCancel(false)}
         className="bg-gray-800 max-w-md"
       >
         <div className="p-6">
-          <h3 className="text-xl text-white mb-4">¿Confirmar cancelar?</h3>
+          <h3 className="text-xl text-white mb-4">{copy.buttons.confirmCancel}</h3>
           <p className="text-gray-300 mb-6">
-            Los cambios no guardados se perderán. ¿Desea continuar?
+            {copy.buttons.unsavedChanges}
           </p>
           <div className="flex justify-end space-x-4">
             <Button
@@ -433,7 +551,7 @@ const CreateContribution: React.FC = () => {
               type="button"
               outline
             >
-              No, continuar editando
+              {copy.buttons.keepEditing}
             </Button>
             <Button
               onClick={() => {
@@ -443,7 +561,7 @@ const CreateContribution: React.FC = () => {
               type="button"
               primary
             >
-              Sí, cancelar
+              {copy.buttons.yesCancel}
             </Button>
           </div>
         </div>

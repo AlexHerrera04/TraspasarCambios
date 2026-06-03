@@ -10,6 +10,12 @@ import CardGrid from '../components/CardGrid';
 import Favorites from '../components/Favorites/handlers/FavoritesRow';
 import { List } from '../components/CardList/CardList';
 import NewsTicker from 'src/app/ui/NewsTicker';
+import {
+  ContinueWatchingItem,
+  getContinueWatchingItems,
+  removeContinueWatchingItem,
+  YOUTUBE_CONTINUE_WATCHING_UPDATED,
+} from '../utils/youtubeContinueWatching';
 
 const APP_LANGUAGE_KEY = 'appLanguage';
 
@@ -241,6 +247,7 @@ const Browser = () => {
   const copy =
     language === 'en'
       ? {
+          continueWatching: 'Continue watching',
           mandatory: 'Mandatory Content',
           aligned: 'Aligned with your Digital DNA',
           internal: 'Internal to your company',
@@ -250,6 +257,7 @@ const Browser = () => {
           filteredContent: 'Filtered Content',
         }
       : {
+          continueWatching: 'Seguir viendo',
           mandatory: 'Contenido Mandatorio',
           aligned: 'Alineado con tu ADN Digital',
           internal: 'Interno de tu empresa',
@@ -263,6 +271,13 @@ const Browser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
+  const [continueWatching, setContinueWatching] = useState<
+    ContinueWatchingItem[]
+  >([]);
+
+  const refreshContinueWatching = useCallback(() => {
+    setContinueWatching(getContinueWatchingItems());
+  }, []);
 
   const debounceSearchTerm = useCallback(
     debounce((param: string) => {
@@ -357,6 +372,24 @@ const Browser = () => {
     }
   }, [debounceSearchTerm, searchParams]);
 
+  useEffect(() => {
+    refreshContinueWatching();
+
+    window.addEventListener(
+      YOUTUBE_CONTINUE_WATCHING_UPDATED,
+      refreshContinueWatching
+    );
+    window.addEventListener('focus', refreshContinueWatching);
+
+    return () => {
+      window.removeEventListener(
+        YOUTUBE_CONTINUE_WATCHING_UPDATED,
+        refreshContinueWatching
+      );
+      window.removeEventListener('focus', refreshContinueWatching);
+    };
+  }, [refreshContinueWatching]);
+
   const handleSearch = (param: string) => {
     setSearchParams({ search: param });
     setSearchInput(param);
@@ -367,6 +400,14 @@ const Browser = () => {
     setSearchParams({ filter: param });
     setFilterTerm(param);
   };
+
+  const handleRemoveContinueWatching = useCallback(
+    (id: string | number) => {
+      removeContinueWatchingItem(id);
+      refreshContinueWatching();
+    },
+    [refreshContinueWatching]
+  );
 
   const filterContent = (content: any) => {
     if (!filterTerm) return true;
@@ -415,6 +456,17 @@ const Browser = () => {
                 title={copy.mandatory}
                 handleFilter={handleFilter}
                 showSeeAll={false}
+              />
+            )}
+
+            {continueWatching.length > 0 && (
+              <List
+                data={continueWatching}
+                isFetching={false}
+                title={copy.continueWatching}
+                handleFilter={handleFilter}
+                showSeeAll={false}
+                onRemoveItem={handleRemoveContinueWatching}
               />
             )}
 

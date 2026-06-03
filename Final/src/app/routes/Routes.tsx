@@ -47,15 +47,11 @@ const Routes = () => {
       children: [
         {
           path: '/onboarding',
-          element: (
-            <div className="min-h-screen flex flex-col">
-              <Outlet />
-            </div>
-          ),
+          element: <Outlet />,
           children: [
             {
               path: '',
-              element: <Onboarding />,
+              element: withNavbar({ children: <Onboarding /> }),
             },
           ],
         },

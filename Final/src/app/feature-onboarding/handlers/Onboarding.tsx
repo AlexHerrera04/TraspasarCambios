@@ -1,68 +1,164 @@
 import React, { FunctionComponent } from 'react';
-import WikiLogo from '/src/assets/images/wiki-logo2.svg';
-import Button from 'src/app/ui/Button';
-import { Progress } from '@material-tailwind/react';
 import Intro from '../components/Intro';
 import ProfessionalsDetails from '../components/ProfessionalsDetails';
 import About from '../components/About';
 import { motion } from 'framer-motion';
-import Capacities from '../components/Capacities';
-import DigitalDna from '../components/DigitalDna';
-import { UserInfo } from 'src/app/core/models/UserInfo.model';
-import { useMutation } from '@tanstack/react-query';
 import api from 'src/app/core/api/apiProvider';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import Tools from '../components/Tools';
+import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 
 const cardVariants = {
-  hidden: { opacity: 0, x: 500 },
-  visible: { opacity: 1, x: 0 },
-  out: { opacity: 0, x: -500 },
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0 },
+  out: { opacity: 0, y: -24 },
 };
 
-const Onboarding: FunctionComponent<any> = () => {
-  const [index, setIndex] = React.useState(0);
-  const [userInfo, setUserInfo] = React.useState<UserInfo>({} as UserInfo);
-  const navigate = useNavigate();
+type OnboardingUserInfo = {
+  first_name?: string;
+  last_name?: string;
+  public_name?: string;
+  contact_email?: string;
+  phone_number?: string;
+  organization?: string;
+  portfolio_link?: string;
+  profile_picture?: File | null;
+  wiki_avatar?: File | null;
+  function?: string[];
+  industry?: string[];
+  profile?: string[];
+  level?: string[];
+  capacity?: string[];
+  business_driver?: string[];
+  tools?: string[];
+  type?: string;
+};
 
-  const mutation = useMutation({
-    mutationFn: (values: UserInfo) => {
-      return api.patch(
-        `${import.meta.env.VITE_API_URL}/accounts/accountinfo/`,
-        values
-      );
-    },
+const buildAccountInfoFormData = (values: OnboardingUserInfo) => {
+  const formData = new FormData();
+
+  formData.append('public_name', values.public_name || '');
+  formData.append('contact_email', values.contact_email || '');
+  formData.append('phone_number', values.phone_number || '');
+  formData.append('portfolio_link', values.portfolio_link || '');
+
+  (values.level || []).forEach((item) => formData.append('level', item));
+  (values.profile || []).forEach((item) => formData.append('profile', item));
+  (values.industry || []).forEach((item) => formData.append('industry', item));
+  (values.function || []).forEach((item) => formData.append('function', item));
+  (values.capacity || []).forEach((item) => formData.append('capacity', item));
+  (values.business_driver || []).forEach((item) =>
+    formData.append('business_driver', item)
+  );
+  (values.tools || []).forEach((item) => formData.append('tool', item));
+
+  if (values.profile_picture) {
+    formData.append('profile_picture', values.profile_picture);
+  }
+
+  if (values.wiki_avatar) {
+    formData.append('wiki_avatar', values.wiki_avatar);
+  }
+
+  return formData;
+};
+
+const Onboarding: FunctionComponent = () => {
+  const navigate = useNavigate();
+  const { userInfo: sessionUserInfo, userAccountInfo } = useUser();
+
+  const [index, setIndex] = React.useState(0);
+  const [userInfo, setUserInfo] = React.useState<OnboardingUserInfo>({
+    first_name: sessionUserInfo?.first_name || '',
+    last_name: sessionUserInfo?.last_name || '',
+    public_name: userAccountInfo?.public_name || '',
+    contact_email:
+      userAccountInfo?.contact_email || sessionUserInfo?.email || '',
+    phone_number: userAccountInfo?.phone_number || '',
+    organization: sessionUserInfo?.organization || 'Acme',
+    portfolio_link: userAccountInfo?.portfolio_link || '',
+    profile_picture: null,
+    wiki_avatar: null,
+    function: userAccountInfo?.function || [],
+    industry: userAccountInfo?.industry || [],
+    profile: userAccountInfo?.profile || [],
+    level: userAccountInfo?.level || [],
+    capacity: userAccountInfo?.capacity || [],
+    business_driver: [],
+    tools: [],
+    type: userAccountInfo?.type || 'expert',
   });
 
-  const nextStep = (newUserInfo: UserInfo, lastStep: boolean = false) => {
-    console.log(newUserInfo, lastStep);
-    if (lastStep) {
-      //delete newUserInfo.level;
-      //delete newUserInfo.capacity;
-      mutation.mutate(newUserInfo, {
-        onSuccess: (data) => {
-          toast.success('Tu perfil ha sido actualizado correctamente.');
-        },
-        onError: (error) => {
-          toast.error('Something went wrong, please try again.', {
-            position: toast.POSITION.BOTTOM_LEFT,
-          });
-        },
-      });
-      navigate('/home');
+  const nextStep = async (
+    newUserInfo: OnboardingUserInfo,
+    lastStep: boolean = false
+  ) => {
+    if (!lastStep) {
+      setUserInfo(newUserInfo);
+      setIndex((current) => current + 1);
+      return;
     }
-    setUserInfo(newUserInfo);
-    setIndex(index + 1);
+
+    try {
+      const userPayload = {
+        first_name: newUserInfo.first_name || '',
+        last_name: newUserInfo.last_name || '',
+        email: newUserInfo.contact_email || '',
+      };
+
+      try {
+        await api.patch(
+          `${import.meta.env.VITE_API_URL}/accounts/userinfo`,
+          userPayload
+        );
+      } catch (error) {
+        console.error('No se pudo actualizar userinfo:', error);
+      }
+
+      if (newUserInfo.profile_picture || newUserInfo.wiki_avatar) {
+        const formData = buildAccountInfoFormData(newUserInfo);
+        await api.patch(
+          `${import.meta.env.VITE_API_URL}/accounts/accountinfo/`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+      } else {
+        await api.patch(`${import.meta.env.VITE_API_URL}/accounts/accountinfo/`, {
+          public_name: newUserInfo.public_name || '',
+          contact_email: newUserInfo.contact_email || '',
+          phone_number: newUserInfo.phone_number || '',
+          portfolio_link: newUserInfo.portfolio_link || '',
+          level: newUserInfo.level || [],
+          profile: newUserInfo.profile || [],
+          industry: newUserInfo.industry || [],
+          function: newUserInfo.function || [],
+          capacity: newUserInfo.capacity || [],
+          business_driver: newUserInfo.business_driver || [],
+          tool: newUserInfo.tools || [],
+        });
+      }
+
+      toast.success('Tu perfil ha sido actualizado correctamente.');
+      navigate('/content');
+    } catch (error) {
+      toast.error('Something went wrong, please try again.', {
+        position: toast.POSITION.BOTTOM_LEFT,
+      });
+    }
   };
+
   const previousStep = () => {
-    setIndex(index - 1);
+    setIndex((current) => current - 1);
   };
 
   const steps = [
     <Intro
       onClick={() => {
-        setIndex(index + 1);
+        setIndex((current) => current + 1);
       }}
     />,
     <About userInfo={userInfo} onClick={nextStep} />,
@@ -71,31 +167,10 @@ const Onboarding: FunctionComponent<any> = () => {
       nextStep={nextStep}
       previousStep={previousStep}
     />,
-    <Tools
-      userInfo={userInfo}
-      nextStep={nextStep}
-      previousStep={previousStep}
-    />,
-    /* <Capacities
-    <Tools
-      userInfo={userInfo}
-      nextStep={nextStep}
-      previousStep={previousStep}
-    />,
-    <DigitalDna
-      userInfo={userInfo}
-      nextStep={nextStep}
-      previousStep={previousStep}
-    />,*/
   ];
 
   return (
-    <div>
-      <div className="py-2 px-4 lg:px-8 lg:py-6">
-        <a href="/">
-          <img src={WikiLogo} width={100} alt="" />
-        </a>
-      </div>
+    <div className="min-h-screen bg-[#0f172a] text-white">
 
       <motion.div
         initial="hidden"
@@ -103,21 +178,13 @@ const Onboarding: FunctionComponent<any> = () => {
         exit="out"
         variants={cardVariants}
         transition={{ duration: 0.2 }}
-        className="container mx-auto mt-36"
+        className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8 lg:px-8"
         key={index}
-        children={steps[index]}
-      ></motion.div>
+      >
+        {steps[index]}
+      </motion.div>
     </div>
   );
 };
+
 export default Onboarding;
-
-/*styleName: Display/3XL/Semibold;
-font-family: Inter;
-font-size: 72px;
-font-weight: 600;
-line-height: 90px;
-letter-spacing: -0.02em;
-text-align: center;
-
- */

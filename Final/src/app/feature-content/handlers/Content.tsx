@@ -21,17 +21,39 @@ import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 import withNavbar from 'src/app/core/handlers/withNavbar';
 import Button from 'src/app/ui/Button';
 
-const TABLE_HEAD = ['Id', 'Nombre', 'Tipo', 'Estado', 'Fecha', ''];
+const APP_LANGUAGE_KEY = 'appLanguage';
 
 const ContentTable: FunctionComponent<any> = (props: any) => {
   const navigate = useNavigate();
-  const { data } = props;
+  const { data, language } = props;
+
+  const tableHead =
+    language === 'en'
+      ? ['Id', 'Name', 'Type', 'Status', 'Date', '']
+      : ['Id', 'Nombre', 'Tipo', 'Estado', 'Fecha', ''];
+
+  const copy =
+    language === 'en'
+      ? {
+          published: 'Published',
+          inReview: 'In review',
+          viewContent: 'View Content',
+          editContent: 'Edit Content',
+          deleteContent: 'Delete Content',
+        }
+      : {
+          published: 'publicado',
+          inReview: 'en revisión',
+          viewContent: 'Ver contenido',
+          editContent: 'Editar contenido',
+          deleteContent: 'Eliminar contenido',
+        };
 
   return (
     <table className="mt-4 w-full min-w-max table-auto text-left">
       <thead>
         <tr>
-          {TABLE_HEAD.map((head) => (
+          {tableHead.map((head) => (
             <th
               key={head}
               className="border-y border-blue-gray-100 bg-gray-700 p-4"
@@ -103,7 +125,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     <Chip
                       variant="ghost"
                       size="sm"
-                      value={status ? 'publicado' : 'en revisión'}
+                      value={status ? copy.published : copy.inReview}
                       color={status ? 'green' : 'blue-gray'}
                     />
                   </div>
@@ -120,7 +142,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                 </td>
 
                 <td className={classes}>
-                  <Tooltip content="View Content">
+                  <Tooltip content={copy.viewContent}>
                     <IconButton
                       variant="text"
                       onClick={() => navigate(`/explorer/${id}`)}
@@ -129,7 +151,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     </IconButton>
                   </Tooltip>
 
-                  <Tooltip content="Edit Content">
+                  <Tooltip content={copy.editContent}>
                     <IconButton
                       variant="text"
                       onClick={() => navigate(`edit/${id}`)}
@@ -138,7 +160,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     </IconButton>
                   </Tooltip>
 
-                  <Tooltip content="Delete Content">
+                  <Tooltip content={copy.deleteContent}>
                     <IconButton variant="text">
                       <TrashIcon className="h-4 w-4" />
                     </IconButton>
@@ -156,6 +178,26 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
 const Content: FunctionComponent<any> = () => {
   const navigate = useNavigate();
   const { userAccountInfo } = useUser();
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          companyTitle: 'Share your knowledge.',
+          expertTitle: 'Your Content',
+          description:
+            'Publish relevant content, visible only to users in your company, encouraging collaboration and knowledge sharing.',
+          addContent: 'Add Content',
+          emptyState: "You haven't published any content.",
+        }
+      : {
+          companyTitle: 'Comparte tu conocimiento.',
+          expertTitle: 'Tu Contenido',
+          description:
+            'Publica contenido relevante, visible sólo para los usuarios de tu empresa, fomentando la colaboración y el intercambio de conocimiento.',
+          addContent: 'Agregar Contenido',
+          emptyState: 'No has publicado ningún contenido.',
+        };
 
   const { data, isFetching } = useQuery({
     queryKey: ['content'],
@@ -173,23 +215,19 @@ const Content: FunctionComponent<any> = () => {
         <div>
           <h2 className="mt-10 mb-7 text-4xl font-bold">
             {userAccountInfo?.type === 'company'
-              ? 'Comparte tu conocimiento.'
-              : 'Tu Contenido'}
+              ? copy.companyTitle
+              : copy.expertTitle}
           </h2>
 
           {userAccountInfo?.type === 'company' && (
-            <p className="mb-7">
-              Publica contenido relevante, visible sólo para los usuarios de tu
-              empresa, fomentando la colaboración y el intercambio de
-              conocimiento.
-            </p>
+            <p className="mb-7">{copy.description}</p>
           )}
         </div>
 
         <div className="flex gap-3">
           <Button primary onClick={() => navigate('new')}>
-            <PlusCircleIcon strokeWidth={2} className="h-4 w-4" /> Agregar
-            Contenido
+            <PlusCircleIcon strokeWidth={2} className="h-4 w-4" />{' '}
+            {copy.addContent}
           </Button>
         </div>
       </div>
@@ -202,7 +240,9 @@ const Content: FunctionComponent<any> = () => {
             </div>
           )}
 
-          {data && data.length > 0 && <ContentTable data={data} />}
+          {data && data.length > 0 && (
+            <ContentTable data={data} language={language} />
+          )}
 
           {data && data.length === 0 && (
             <div className="flex justify-center">
@@ -211,7 +251,7 @@ const Content: FunctionComponent<any> = () => {
                 color="white"
                 className="font-normal"
               >
-                No has publicado ningún contenido.
+                {copy.emptyState}
               </Typography>
             </div>
           )}

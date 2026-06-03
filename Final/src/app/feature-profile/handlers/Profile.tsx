@@ -143,6 +143,19 @@ const StatCard = ({
   </div>
 );
 
+const SummaryCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="rounded-2xl border border-white/10 bg-gray-800 p-6">
+    <h2 className="mb-4 text-xl font-bold text-white">{title}</h2>
+    <div className="space-y-3">{children}</div>
+  </div>
+);
+
 const InfoRow = ({
   label,
   value,
@@ -185,7 +198,11 @@ const InfoRow = ({
 
   if (action) {
     return (
-      <button type="button" onClick={action} className={`${baseClass} ${toneClass}`}>
+      <button
+        type="button"
+        onClick={action}
+        className={`${baseClass} ${toneClass}`}
+      >
         {content}
       </button>
     );
@@ -344,6 +361,87 @@ const Profile: FunctionComponent = () => {
     logout();
     navigate('/login');
   };
+
+  if (userAccountInfo?.type === 'expert') {
+    const expertContent = (
+      <div className="min-h-[calc(100vh-72px)] bg-gray-900 text-white">
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary-300">
+                Área personal
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-white">Perfil</h1>
+              <p className="mt-2 text-sm text-gray-300">
+                Resumen de la información que completaste en el onboarding.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <SummaryCard title="Información personal">
+              <InfoRow label="Nombre" value={userInfo?.first_name || '-'} />
+              <InfoRow label="Apellido" value={userInfo?.last_name || '-'} />
+              <InfoRow
+                label="Nombre público"
+                value={userAccountInfo?.public_name || '-'}
+              />
+              <InfoRow
+                label="Mail"
+                value={userAccountInfo?.contact_email || userInfo?.email || '-'}
+              />
+              <InfoRow
+                label="Teléfono"
+                value={userAccountInfo?.phone_number || '-'}
+              />
+              <InfoRow
+                label="Empresa asociada"
+                value={userInfo?.organization || 'Acme'}
+              />
+              <InfoRow
+                label="Enlace de portfolio"
+                value={userAccountInfo?.portfolio_link || '-'}
+              />
+            </SummaryCard>
+
+            <SummaryCard title="Contexto profesional">
+              <InfoRow
+                label="Industria"
+                value={joinValues(userAccountInfo?.industry)}
+              />
+              <InfoRow
+                label="Área o función"
+                value={joinValues(userAccountInfo?.function)}
+              />
+              <InfoRow
+                label="Nivel"
+                value={joinValues(userAccountInfo?.level)}
+              />
+              <InfoRow
+                label="Perfil"
+                value={joinValues(userAccountInfo?.profile)}
+              />
+              <InfoRow
+                label="Capacidades"
+                value={joinValues(userAccountInfo?.capacity)}
+              />
+              <InfoRow label="Tipo de cuenta" value="Expert" />
+            </SummaryCard>
+          </div>
+        </div>
+      </div>
+    );
+
+    return withNavbar({ children: expertContent });
+  }
 
   const accountType =
     userAccountInfo?.type === 'company'

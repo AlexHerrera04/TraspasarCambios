@@ -12,6 +12,8 @@ import api from 'src/app/core/api/apiProvider';
 
 interface NavigatorProps {}
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const StyledHeader = styled.h2`
   font-size: 36px;
   font-style: normal;
@@ -28,15 +30,28 @@ const StyledTitleContainer = styled.div`
 `;
 
 function NavigatorTitle({ name }: { name?: string }) {
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
   return (
     <StyledTitleContainer>
       <div>
-        <StyledHeader>Diagnosticador</StyledHeader>
+        <StyledHeader>
+          {language === 'en' ? 'Diagnosticator' : 'Diagnosticador'}
+        </StyledHeader>
       </div>
       <div className="flex gap-12">
         <p className="whitespace-no-wrap text-base not-italic font-medium text-white/60">
-          Hola {name}, bienvenido. Aquí verás ideas elaboradas basadas en tus
-          respuestas y áreas de enfoque.
+          {language === 'en' ? (
+            <>
+              Hello {name}, welcome. Here you will see elaborated ideas based on your
+              responses and focus areas.
+            </>
+          ) : (
+            <>
+              Hola {name}, bienvenido. Aquí verás ideas elaboradas basadas en tus
+              respuestas y áreas de enfoque.
+            </>
+          )}
         </p>
       </div>
     </StyledTitleContainer>

@@ -913,6 +913,9 @@ const NewContent: FunctionComponent<any> = () => {
           isEdit={!!id}
           isFetching={fetchingOptions}
           handleSubmit={handleSubmit}
+          showVisibleFor={userAccountInfo?.type === 'expert'}
+          visibleForOptions={[{ value: 'acme', label: 'Acme' }]}
+          visibleForValue={{ value: 'acme', label: 'Acme' }}
         />
       )}
 
@@ -948,8 +951,7 @@ const NewContent: FunctionComponent<any> = () => {
   );
 
   return withNavbar({
-    children:
-      userAccountInfo?.type === 'expert' ? expertContent : companyContent,
+    children: companyContent,
   });
 };
 

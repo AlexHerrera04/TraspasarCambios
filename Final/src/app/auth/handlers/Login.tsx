@@ -63,6 +63,11 @@ const LoginForm = () => {
         },
       }
     );
+    if (user.type === 'expert') {
+      navigate('/onboarding', { replace: true });
+      return;
+    }
+
     if (user.is_onboarded) {
       navigate('/home', { replace: true });
     } else {

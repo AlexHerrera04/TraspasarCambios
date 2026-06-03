@@ -16,7 +16,6 @@ import {
   PowerIcon,
   Bars2Icon,
   UserIcon,
-  ClockIcon,
   BellIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -84,7 +83,7 @@ const ROUTES = [
   },
 ];
 
-function ProfileMenu({ data }: any) {
+function ProfileMenu({ data, isExpert }: any) {
   const { logout } = useAuth();
   const { setUserInfo, setUserAccountInfo } = useUser();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -97,12 +96,10 @@ function ProfileMenu({ data }: any) {
     language === 'en'
       ? {
           profile: 'Profile',
-          history: 'History',
           signOut: 'Sign out',
         }
       : {
           profile: 'Perfil',
-          history: 'Historial',
           signOut: 'Cerrar sesión',
         };
 
@@ -115,11 +112,6 @@ function ProfileMenu({ data }: any) {
 
   const goToProfile = React.useCallback(() => {
     navigate('/profile');
-    closeMenu();
-  }, [navigate]);
-
-  const goToHistory = React.useCallback(() => {
-    navigate('/history');
     closeMenu();
   }, [navigate]);
 
@@ -164,17 +156,6 @@ function ProfileMenu({ data }: any) {
         </MenuItem>
 
         <MenuItem
-          key="history"
-          onClick={goToHistory}
-          className="flex items-center gap-2 rounded"
-        >
-          <ClockIcon className="h-4 w-4" strokeWidth={2} />
-          <Typography as="span" variant="small" className="font-normal">
-            {copy.history}
-          </Typography>
-        </MenuItem>
-
-        <MenuItem
           key="signout"
           onClick={handleLogout}
           className="flex items-center gap-2 rounded hover:bg-red-500/10 focus:bg-red-500/10 active:bg-red-500/10"
@@ -214,7 +195,7 @@ async function queryUserAccountInfo(userID: string | null) {
   return data;
 }
 
-function HomeActionButtons() {
+function HomeActionButtons({ isExpert }: { isExpert: boolean }) {
   const location = useLocation();
   const unreadNotifications = getNoLeidas();
 
@@ -230,14 +211,16 @@ function HomeActionButtons() {
 
   return (
     <>
-      <Link to="/coach">
-        <div className={getButtonClass(isCoachPage)}>
-          <SparklesIcon className="h-5 w-5 text-white" />
-          <span className="absolute -right-1 -top-1 rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-            IA
-          </span>
-        </div>
-      </Link>
+      {!isExpert && (
+        <Link to="/coach">
+          <div className={getButtonClass(isCoachPage)}>
+            <SparklesIcon className="h-5 w-5 text-white" />
+            <span className="absolute -right-1 -top-1 rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+              IA
+            </span>
+          </div>
+        </Link>
+      )}
 
       <Link to="/notificaciones">
         <div className={getButtonClass(isNotificationsPage)}>
@@ -297,13 +280,18 @@ export default function ComplexNavbar({ children }: any) {
 
       if (
         localUserAccountInfo.type === 'expert' &&
-        !location.pathname.includes('/content')
+        !location.pathname.includes('/content') &&
+        !location.pathname.includes('/profile') &&
+        !location.pathname.includes('/notificaciones') &&
+        !location.pathname.includes('/onboarding') &&
+        !location.pathname.includes('/explorer/')
       ) {
         navigate('/content');
       }
     }
   }, [localUserAccountInfo, location.pathname, navigate, setUserAccountInfo]);
 
+  const isExpert = userAccountInfo?.type === 'expert';
   const isCurrentPage = (href: string) => location.pathname.includes(href);
 
   const navList = (
@@ -341,7 +329,7 @@ export default function ComplexNavbar({ children }: any) {
         className="sticky inset-0 z-10 h-17 max-w-full rounded-none border-b-white/10 border-t-0 border-r-0 border-l-0 bg-wiki px-4 py-2 lg:px-8 lg:py-6"
       >
         <div className="relative mx-auto flex items-center text-secondary-500">
-          <Link to="/home">
+          <Link to={isExpert ? '/content' : '/home'}>
             <img src={WikiLogo} width={100} alt="" />
           </Link>
 
@@ -349,9 +337,9 @@ export default function ComplexNavbar({ children }: any) {
 
           <div className="ml-auto flex items-center">
             <div className="mr-5 flex items-center gap-4">
-              <HomeActionButtons />
+              <HomeActionButtons isExpert={isExpert} />
             </div>
-            {userInfo && <ProfileMenu data={userInfo} />}
+            {userInfo && <ProfileMenu data={userInfo} isExpert={isExpert} />}
           </div>
 
           <IconButton

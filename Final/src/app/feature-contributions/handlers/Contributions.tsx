@@ -25,6 +25,8 @@ import dayjs from 'dayjs';
 import { persistenceService } from '../services/persistenceService';
 import { unmapObjectAttributes } from '../utils/attributeMapper'
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const Contributions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
@@ -34,6 +36,96 @@ const Contributions: React.FC = () => {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          loadError: 'Error loading contributions',
+          draftOnlyError: 'Only draft contributions can be edited',
+          searchPlaceholder: 'Search contributions...',
+          addContribution: 'Add Contribution',
+          headers: [
+            'ID',
+            'Project / Initiative',
+            'Leader',
+            'Status',
+            'Created',
+            'Sent',
+            'Actions',
+          ],
+          viewDetails: 'View details',
+          continueEditing: 'Continue editing',
+          share: 'Share',
+          statusDraft: 'Draft',
+          statusCompleted: 'Completed',
+          statusInProgress: 'In progress',
+          statusPending: 'Pending',
+          statusSubmitted: 'Submitted',
+        }
+      : {
+          loadError: 'Error al cargar las contribuciones',
+          draftOnlyError: 'Solo se puede editar una contribucion en borrador',
+          searchPlaceholder: 'Buscar contribuciones...',
+          addContribution: 'Agregar Contribución',
+          headers: [
+            'ID',
+            'Proyecto / Iniciativa',
+            'Lider',
+            'Estado',
+            'F.Creación',
+            'F.Envío',
+            'Acciones',
+          ],
+          viewDetails: 'Ver detalles',
+          continueEditing: 'Continuar editando',
+          share: 'Compartir',
+          statusDraft: 'Borrador',
+          statusCompleted: 'Completado',
+          statusInProgress: 'En progreso',
+          statusPending: 'Pendiente',
+          statusSubmitted: 'Enviado',
+        };
+
+  const getStatusLabel = (contribution: Contribution & { status_display?: string }) => {
+    if (language === 'es') {
+      return contribution.status_display || contribution.status;
+    }
+
+    const rawStatus = String(contribution.status || '').toLowerCase();
+    const rawDisplay = String(contribution.status_display || '').toLowerCase();
+
+    if (rawStatus === 'draft' || rawDisplay.includes('borrador')) {
+      return copy.statusDraft;
+    }
+
+    if (
+      rawStatus === 'completed' ||
+      rawStatus === 'completado' ||
+      rawDisplay.includes('completado')
+    ) {
+      return copy.statusCompleted;
+    }
+
+    if (
+      rawStatus === 'in_progress' ||
+      rawDisplay.includes('progreso')
+    ) {
+      return copy.statusInProgress;
+    }
+
+    if (rawDisplay.includes('pendiente')) {
+      return copy.statusPending;
+    }
+
+    if (rawDisplay.includes('enviado')) {
+      return copy.statusSubmitted;
+    }
+
+    return contribution.status_display || contribution.status;
+  };
+
   useEffect(() => {
     const fetchContributions = async () => {
       try {
@@ -41,7 +133,7 @@ const Contributions: React.FC = () => {
         setContributions(data);
       } catch (error: any) {
         console.error('Error fetching contributions:', error);
-        toast.error('Error al cargar las contribuciones');
+        toast.error(copy.loadError);
       } finally {
         setLoading(false);
       }
@@ -50,26 +142,18 @@ const Contributions: React.FC = () => {
     fetchContributions();
   }, []);
 
-  // Filtrado de contribuciones
   const filteredContributions = contributions.filter((c) =>
     c.project_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handler para el lápiz
   const handleEdit = (contribution: Contribution) => {
     if (contribution.status === 'draft') {
       const formatedContribution = unmapObjectAttributes(contribution)
       persistenceService.saveContributionData(formatedContribution)
       navigate('create')
     } else {
-      toast.error('Solo se puede editar una contribucion en borrador')
+      toast.error(copy.draftOnlyError)
     }
-
-    // if (!contribution.enviado) {
-    //   navigate(`/contributor/${contribution.id}/edit`);
-    // } else {
-    //   navigate(`/contributor/${contribution.id}/edit/review`);
-    // }
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +174,7 @@ const Contributions: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={handleSearch}
-              placeholder="Buscar contribuciones..."
+              placeholder={copy.searchPlaceholder}
               className="w-full px-4 py-2 bg-[#1e2633] text-white rounded-lg border border-gray-600 focus:border-primary-900 focus:ring-2 focus:ring-primary-900 focus:outline-none"
             />
             <MagnifyingGlassIcon className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -114,7 +198,7 @@ const Contributions: React.FC = () => {
                 d="M12 4.5v15m7.5-7.5h-15"
               />
             </svg>
-            Agregar Contribución
+            {copy.addContribution}
           </button>
         </div>
 
@@ -128,31 +212,21 @@ const Contributions: React.FC = () => {
               <table className="w-full min-w-max table-auto text-center">
                 <thead>
                   <tr>
-                    {[
-                      'ID',
-                      'Proyecto / Iniciativa',
-                      'Lider',
-                      'Estado',
-                      'F.Creación',
-                      'F.Envío',
-                      // 'Eval.',
-                      // 'Feedback',
-                      'Acciones',
-                    ].map((head) => (
+                    {copy.headers.map((head) => (
                       <th
                         key={head}
                         className={`border-b border-blue-gray-100 bg-gray-700 p-4 ${
-                          head === 'Proyecto / Iniciativa'
+                          head === 'Proyecto / Iniciativa' || head === 'Project / Initiative'
                             ? 'w-72'
-                            : head === 'Lider'
+                            : head === 'Lider' || head === 'Leader'
                             ? 'w-48'
                             : head === 'ID'
                             ? 'w-12'
-                            : head === 'Estado'
+                            : head === 'Estado' || head === 'Status'
                             ? 'w-28'
                             : head === 'Feedback'
                             ? 'w-28'
-                            : head === 'Acc.'
+                            : head === 'Acc.' || head === 'Acciones' || head === 'Actions'
                             ? 'w-40'
                             : 'w-24'
                         }`}
@@ -210,7 +284,7 @@ const Contributions: React.FC = () => {
                               ? 'bg-warning-600 text-black'
                               : 'bg-success-500 text-white'
                           }
-                          value={contribution.status_display}
+                          value={getStatusLabel(contribution as Contribution & { status_display?: string })}
                         />
                       </td>
                       <td className="p-4">
@@ -231,30 +305,9 @@ const Contributions: React.FC = () => {
                           {contribution.feedback_requested_at ? dayjs(contribution.feedback_requested_at).format('DD-MM-YY') : ''}
                         </Typography>
                       </td>
-                      {/* <td className="p-4">
-                        <Typography
-                          variant="small"
-                          color="white"
-                          className="font-normal text-center"
-                        >
-                          {contribution.evaluadores.toString()}
-                        </Typography>
-                      </td> */}
-                      {/* <td className="p-4">
-                        <Chip
-                          size="sm"
-                          variant="filled"
-                          className={
-                            contribution.feedback === 'EN_PROCESO'
-                              ? 'bg-success-500 text-white'
-                              : 'bg-warning-600 text-black'
-                          }
-                          value={contribution.feedback}
-                        />
-                      </td> */}
                       <td className="p-4">
                         <div className="flex justify-center">
-                          <Tooltip content="Ver detalles">
+                          <Tooltip content={copy.viewDetails}>
                             <IconButton
                               variant="text"
                               color="white"
@@ -265,7 +318,7 @@ const Contributions: React.FC = () => {
                               <EyeIcon className="h-4 w-4" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip content="Continuar editando">
+                          <Tooltip content={copy.continueEditing}>
                             <IconButton
                               variant="text"
                               color="white"
@@ -274,7 +327,7 @@ const Contributions: React.FC = () => {
                               <PencilIcon className="h-4 w-4" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip content="Compartir">
+                          <Tooltip content={copy.share}>
                             <IconButton 
                               variant="text" 
                               color="white"
@@ -294,7 +347,6 @@ const Contributions: React.FC = () => {
         </Card>
       </div>
 
-      {/* Modal de detalles */}
       {selectedContributionId && (
         <Dialog
           open={!!selectedContributionId}
@@ -308,7 +360,6 @@ const Contributions: React.FC = () => {
         </Dialog>
       )}
 
-      {/* Modal de compartir */}
       {selectedContributionForShare && (
         <ShareContributionDialog
           open={shareDialogOpen}
