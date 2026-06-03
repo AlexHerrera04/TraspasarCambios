@@ -7,17 +7,16 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Actions from '../components/Actions';
 import Capacities from '../components/Capacities';
-import { Button, Spinner } from '@material-tailwind/react';
-import Alert from 'src/app/ui/Alert';
-import BotIcon from 'src/assets/icons/bot-icon.svg';
+import { Spinner } from '@material-tailwind/react';
 import api from 'src/app/core/api/apiProvider';
+
 interface NavigatorProps {}
 
 const StyledHeader = styled.h2`
   font-size: 36px;
   font-style: normal;
   font-weight: 700;
-  line-height: 133%; /* 47.88px */
+  line-height: 133%;
   letter-spacing: -0.72px;
 `;
 
@@ -45,7 +44,7 @@ function NavigatorTitle({ name }: { name?: string }) {
 }
 
 const Navigator: FunctionComponent<NavigatorProps> = () => {
-  const { userInfo, userAccountInfo } = useUser();
+  const { userInfo } = useUser();
   const [isQuizCompleted, setQuizCompeted] = useState(false);
   const [generateInsight, setGenerateInsight] = useState(false);
 
@@ -71,27 +70,6 @@ const Navigator: FunctionComponent<NavigatorProps> = () => {
       },
     ],
   });
-  //const surveysQuery = useQuery();
-
-  // const generatedInsightQuery = useQuery({
-  //   queryKey: ['generatedInsight'],
-  //   queryFn: async () => {
-  //     const url = window.location.href;
-  //     const urlWithoutQuery = url.split('?')[0];
-  //     window.history.replaceState({}, document.title, urlWithoutQuery);
-  //     const themes = localStorage.getItem('themes');
-
-  //     const { data } = await api.get(
-  //       `${
-  //         import.meta.env.VITE_API_URL
-  //       }/diagnoses/generate-structured-insights/${themes}`
-  //     );
-  //     return data;
-  //   },
-  //   enabled: generateInsight,
-  // });
-
-  //const insightsListQuery = useQuery();
 
   const expertsQuery = useQuery({
     queryKey: ['expertsList'],
@@ -127,24 +105,6 @@ const Navigator: FunctionComponent<NavigatorProps> = () => {
 
   const navigatorContent = (
     <div className="container mx-auto px-3 lg:px-0">
-      <div className="mt-6">
-        <Alert image={BotIcon}>
-          <p>
-            <strong>Hola {userAccountInfo?.public_name}, estamos cerrando con éxito el MVP. </strong>
-            Solo queda validar la funcionalidad "Contribuidor" con un grupo reducido de usuarios. 
-            Gracias por todo tu apoyo. Muy pronto comenzamos la siguiente fase… ¡y esperamos contar contigo! Equipo Open KX.
-          </p>
-          <a
-            className="self-center"
-            href="https://forms.gle/T2ELLU6vzwfC9RY9A"
-            target="_blank"
-          >
-            <Button color="white" variant="outlined" type="button">
-              Feedback
-            </Button>
-          </a>
-        </Alert>
-      </div>
       <NavigatorTitle name={userInfo?.first_name} />
       <div className="flex flex-col">
         <div className="pb-12 border-b border-b-white/10">

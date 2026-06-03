@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import withNavbar from '../../core/handlers/withNavbar';
 import { useNavigate } from 'react-router-dom';
@@ -74,7 +73,6 @@ const FormGoal: React.FC = () => {
   const [availableQuizzes, setAvailableQuizzes] = useState<Quiz[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
 
-  // Usar el hook directamente
   const { mutateAsync: createGoal } = useCreateGoal();
 
   const [formData, setFormData] = useState<FormData>({
@@ -90,7 +88,18 @@ const FormGoal: React.FC = () => {
     expiration_date: new Date().toISOString().split('T')[0],
   });
 
-  // Función para verificar si hay quiz asociado
+  const selectedUsersForModal: User[] = formData.users.map((id, index) => ({
+    id,
+    public_name: formData.user_names[index] || '',
+    username: formData.user_names[index] || '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    organization: '',
+    type: 'expert',
+    organization_level: {} as any,
+  }));
+
   const checkAssociatedQuiz = async (contentId: number) => {
     try {
       setIsCheckingQuiz(true);
@@ -110,14 +119,12 @@ const FormGoal: React.FC = () => {
     }
   };
 
-  // Efecto para verificar quiz cuando se selecciona un contenido
   useEffect(() => {
     if (formData.content) {
       checkAssociatedQuiz(formData.content);
     }
   }, [formData.content]);
 
-  // Función para manejar el cambio de hasQuiz
   const handleHasQuizChange = (value: boolean) => {
     setFormData((prev) => ({
       ...prev,
@@ -153,7 +160,6 @@ const FormGoal: React.FC = () => {
           : `${formData.users.length} metas creadas exitosamente`
       );
 
-      // En lugar de usar Dialog.show, usamos un estado para controlar el diálogo
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('Error creating goals:', error);
@@ -169,30 +175,26 @@ const FormGoal: React.FC = () => {
     try {
       setIsCheckingQuiz(true);
 
-      // Mantener el tipo actual en lugar de cambiarlo basado en content.type
-      const contentType = formData.type; // Usar el tipo actual del formulario
+      const contentType = formData.type;
 
       setFormData((prev) => ({
         ...prev,
         content: content.id,
         content_name: content.name,
-        type: contentType, // Mantener el mismo tipo que ya estaba seleccionado
+        type: contentType,
       }));
 
-      // Verificar quizzes disponibles solo si es tipo contenido
       if (contentType === 'contenido') {
         const response = await api.get(
           `${import.meta.env.VITE_API_URL}/goals/quiz/${content.id}/`
         );
 
-        // Si la respuesta tiene data, significa que hay un quiz
         if (response.data) {
           setHasAssociatedQuiz(true);
-          // Si es un array, guardamos los quizzes disponibles
+
           if (Array.isArray(response.data)) {
             setAvailableQuizzes(response.data);
           } else {
-            // Si no es array, probablemente es un solo quiz
             setAvailableQuizzes([
               {
                 quiz_id: response.data.quiz_id || 0,
@@ -253,7 +255,6 @@ const FormGoal: React.FC = () => {
   return withNavbar({
     children: (
       <div className="relative flex flex-col lg:flex-row items-start justify-center min-h-screen bg-gray-900 p-4 mx-auto max-w-7xl">
-        {/* Botón de cerrar */}
         <button
           onClick={() => {
             localStorage.setItem('lastTab', 'Metas');
@@ -264,7 +265,6 @@ const FormGoal: React.FC = () => {
           <XMarkIcon className="h-6 w-6 text-gray-400 hover:text-white" />
         </button>
 
-        {/* Lado izquierdo - Título y Progreso */}
         <div className="w-full lg:w-1/2 px-8 mb-8 lg:mb-0">
           <Progress
             value={50}
@@ -291,10 +291,8 @@ const FormGoal: React.FC = () => {
           </p>
         </div>
 
-        {/* Lado derecho - Formulario */}
         <div className="w-full lg:w-1/2 text-lg font-normal leading-8 lg:border-l border-gray-700 py-8 px-8 lg:px-16">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Nombre de Meta/Tarea */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 Nombre de Meta/Tarea
@@ -311,7 +309,6 @@ const FormGoal: React.FC = () => {
               />
             </div>
 
-            {/* Tipo de Meta */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 Tipo de Meta
@@ -348,7 +345,6 @@ const FormGoal: React.FC = () => {
               />
             </div>
 
-            {/* Assessment/Contenido */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 {getContentTypeDisplay(formData.type)}
@@ -375,13 +371,10 @@ const FormGoal: React.FC = () => {
               </div>
             </div>
 
-            {/* Quiz Option - Solo mostrar si es tipo contenido */}
             {formData.type === 'contenido' && (
               <>
-                {/* Estado del Quiz - Solo mostrar si se selecciono un content */}
                 {formData.content_name && (
                   <div className="mb-6">
-                    {/* <div className="flex flex-col gap-4 p-3 rounded-lg bg-gray-800"> */}
                     <div className="flex items-center justify-between p-3 rounded-lg bg-gray-800">
                       <div className="flex items-center gap-2">
                         <div
@@ -393,9 +386,7 @@ const FormGoal: React.FC = () => {
                           {isCheckingQuiz ? (
                             'Verificando quiz...'
                           ) : hasAssociatedQuiz ? (
-                            <span>
-                              Este contenido incluye un Quiz
-                            </span>
+                            <span>Este contenido incluye un Quiz</span>
                           ) : (
                             'Este contenido no incluye un Quiz'
                           )}
@@ -421,7 +412,6 @@ const FormGoal: React.FC = () => {
               </>
             )}
 
-            {/* Usuario */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 Usuario
@@ -444,7 +434,6 @@ const FormGoal: React.FC = () => {
               </div>
             </div>
 
-            {/* Prioridad */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 Prioridad
@@ -471,7 +460,6 @@ const FormGoal: React.FC = () => {
               />
             </div>
 
-            {/* Fecha Límite */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
                 Fecha Límite
@@ -491,7 +479,6 @@ const FormGoal: React.FC = () => {
               />
             </div>
 
-            {/* Botones */}
             <div className="flex justify-end gap-4 pt-6">
               <Button
                 type="submit"
@@ -507,7 +494,6 @@ const FormGoal: React.FC = () => {
           </form>
         </div>
 
-        {/* Modales */}
         <SelectContentModal
           open={isContentModalOpen}
           onClose={() => setIsContentModalOpen(false)}
@@ -524,16 +510,15 @@ const FormGoal: React.FC = () => {
           onClose={() => setIsUserModalOpen(false)}
           onSelect={handleUserSelect}
           multiple={true}
+          selectedUsers={selectedUsersForModal}
         />
 
-        {/* Diálogo de confirmación */}
         <DialogComponent
           open={showSuccessDialog}
           handler={() => setShowSuccessDialog(false)}
           className="bg-gray-900 border border-gray-800"
         >
           <div className="p-6 text-center">
-            {/* Icono de éxito */}
             <div className="mb-6 flex justify-center">
               <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                 <svg
@@ -552,7 +537,6 @@ const FormGoal: React.FC = () => {
               </div>
             </div>
 
-            {/* Texto */}
             <h2 className="text-2xl font-bold text-white mb-2">
               ¡Meta creada exitosamente!
             </h2>
@@ -560,7 +544,6 @@ const FormGoal: React.FC = () => {
               ¿Qué deseas hacer a continuación?
             </p>
 
-            {/* Botones */}
             <div className="flex items-center justify-center gap-4 px-4">
               <Button
                 onClick={() => {

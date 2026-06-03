@@ -11,6 +11,8 @@ import Favorites from '../components/Favorites/handlers/FavoritesRow';
 import { List } from '../components/CardList/CardList';
 import NewsTicker from 'src/app/ui/NewsTicker';
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const StyledListContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -20,7 +22,10 @@ const StyledListContainer = styled.div`
 
 const filterCategories = {
   C: {
-    label: 'Comunicación',
+    label: {
+      es: 'Comunicación',
+      en: 'Communication',
+    },
     keywords: [
       'comunica',
       'adapta',
@@ -38,7 +43,10 @@ const filterCategories = {
     ],
   },
   L: {
-    label: 'Liderazgo',
+    label: {
+      es: 'Liderazgo',
+      en: 'Leadership',
+    },
     keywords: [
       'cambio',
       'estrategia',
@@ -60,7 +68,10 @@ const filterCategories = {
     ],
   },
   P: {
-    label: 'Proyectos',
+    label: {
+      es: 'Proyectos',
+      en: 'Projects',
+    },
     keywords: [
       'proyecto',
       'programas',
@@ -75,7 +86,10 @@ const filterCategories = {
     ],
   },
   N: {
-    label: 'Negociación',
+    label: {
+      es: 'Negociación',
+      en: 'Negotiation',
+    },
     keywords: [
       'estrategia',
       'acuerdo',
@@ -92,7 +106,10 @@ const filterCategories = {
     ],
   },
   I: {
-    label: 'IT & PoCs',
+    label: {
+      es: 'IT & PoCs',
+      en: 'IT & PoCs',
+    },
     keywords: [
       'innovación',
       'innovation',
@@ -127,7 +144,10 @@ const filterCategories = {
     ],
   },
   O: {
-    label: 'Coaching',
+    label: {
+      es: 'Coaching',
+      en: 'Coaching',
+    },
     keywords: [
       'inspira',
       'motiva',
@@ -215,6 +235,30 @@ const CONTENT_CATEGORIES: { title: string; ids: number[] }[] = [
 ];
 
 const Browser = () => {
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          mandatory: 'Mandatory Content',
+          aligned: 'Aligned with your Digital DNA',
+          internal: 'Internal to your company',
+          latest: 'Latest content',
+          youMayLike: 'You might be interested',
+          recommendations: 'Recommendations',
+          filteredContent: 'Filtered Content',
+        }
+      : {
+          mandatory: 'Contenido Mandatorio',
+          aligned: 'Alineado con tu ADN Digital',
+          internal: 'Interno de tu empresa',
+          latest: 'Lo más reciente',
+          youMayLike: 'Podrían interesarte',
+          recommendations: 'Recomendaciones',
+          filteredContent: 'Contenido filtrado',
+        };
+
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
@@ -368,16 +412,16 @@ const Browser = () => {
               <List
                 data={mandatoryQuery.data}
                 isFetching={mandatoryQuery.isFetching}
-                title="Contenido Mandatorio"
+                title={copy.mandatory}
                 handleFilter={handleFilter}
                 showSeeAll={false}
               />
             )}
-            
+
             <List
               data={data}
               isFetching={isFetching}
-              title="Alineado con tu ADN Digital"
+              title={copy.aligned}
               handleFilter={handleFilter}
               showSeeAll={false}
             />
@@ -386,7 +430,7 @@ const Browser = () => {
               <List
                 data={internalQuery.data}
                 isFetching={internalQuery.isFetching}
-                title="Interno de tu empresa"
+                title={copy.internal}
                 handleFilter={handleFilter}
                 showSeeAll={false}
               />
@@ -410,7 +454,7 @@ const Browser = () => {
             <List
               data={newContentsQuery.data}
               isFetching={newContentsQuery.isFetching}
-              title="Lo mas reciente"
+              title={copy.latest}
               handleFilter={handleFilter}
               showSeeAll={false}
             />
@@ -421,7 +465,7 @@ const Browser = () => {
               id="card-grid"
               data={data}
               isFetching={isFetching}
-              title="Podrían interesarte"
+              title={copy.youMayLike}
               handleFilter={handleFilter}
             />
           </>
@@ -432,7 +476,7 @@ const Browser = () => {
             id="card-grid"
             data={data}
             isFetching={isFetching}
-            title="Recomendaciones"
+            title={copy.recommendations}
             handleFilter={handleFilter}
           />
         )}
@@ -456,7 +500,7 @@ const Browser = () => {
             filterParam={filterTerm}
             title={
               filterCategories[filterTerm as keyof typeof filterCategories]
-                ?.label || 'Filtered Content'
+                ?.label[language] || copy.filteredContent
             }
           />
         )}

@@ -7,8 +7,6 @@ import {
 import {
   Card,
   CardBody,
-  CardFooter,
-  CardHeader,
   Chip,
   IconButton,
   Spinner,
@@ -21,15 +19,14 @@ import { useNavigate } from 'react-router-dom';
 import api from 'src/app/core/api/apiProvider';
 import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 import withNavbar from 'src/app/core/handlers/withNavbar';
-import Alert from 'src/app/ui/Alert';
 import Button from 'src/app/ui/Button';
-import BotIcon from 'src/assets/icons/bot-icon.svg';
 
 const TABLE_HEAD = ['Id', 'Nombre', 'Tipo', 'Estado', 'Fecha', ''];
 
 const ContentTable: FunctionComponent<any> = (props: any) => {
   const navigate = useNavigate();
   const { data } = props;
+
   return (
     <table className="mt-4 w-full min-w-max table-auto text-left">
       <thead>
@@ -50,6 +47,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
           ))}
         </tr>
       </thead>
+
       <tbody>
         {data.map(
           ({ id, name, type, created_at, status }: any, index: number) => {
@@ -71,6 +69,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     </div>
                   </div>
                 </td>
+
                 <td className={classes}>
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col">
@@ -84,6 +83,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     </div>
                   </div>
                 </td>
+
                 <td className={classes}>
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col">
@@ -97,6 +97,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     </div>
                   </div>
                 </td>
+
                 <td className={classes}>
                   <div className="w-max">
                     <Chip
@@ -107,6 +108,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     />
                   </div>
                 </td>
+
                 <td className={classes}>
                   <Typography
                     variant="small"
@@ -116,6 +118,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                     {new Date(created_at).toLocaleDateString()}
                   </Typography>
                 </td>
+
                 <td className={classes}>
                   <Tooltip content="View Content">
                     <IconButton
@@ -125,6 +128,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                       <EyeIcon className="h-4 w-4" />
                     </IconButton>
                   </Tooltip>
+
                   <Tooltip content="Edit Content">
                     <IconButton
                       variant="text"
@@ -133,6 +137,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                       <PencilIcon className="h-4 w-4" />
                     </IconButton>
                   </Tooltip>
+
                   <Tooltip content="Delete Content">
                     <IconButton variant="text">
                       <TrashIcon className="h-4 w-4" />
@@ -150,7 +155,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
 
 const Content: FunctionComponent<any> = () => {
   const navigate = useNavigate();
-  const { userInfo, userAccountInfo } = useUser();
+  const { userAccountInfo } = useUser();
 
   const { data, isFetching } = useQuery({
     queryKey: ['content'],
@@ -163,88 +168,56 @@ const Content: FunctionComponent<any> = () => {
   });
 
   const pageContent = (
-    <>
-      <div className="my-5 container mx-auto">
-        <div className="mt-6">
-          <Alert image={BotIcon}>
-          <p>
-            <strong>Hola {userAccountInfo?.public_name}, estamos cerrando con éxito el MVP. </strong>
-            Solo queda validar la funcionalidad "Contribuidor" con un grupo reducido de usuarios. 
-            Gracias por todo tu apoyo. Muy pronto comenzamos la siguiente fase… ¡y esperamos contar contigo! Equipo Open KX.
-          </p>
-            <a
-              className="self-center"
-              href="https://forms.gle/T2ELLU6vzwfC9RY9A"
-              target="_blank"
-            >
-              <Button outline>Feedback</Button>
-            </a>
-          </Alert>
+    <div className="my-5 container mx-auto">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="mt-10 mb-7 text-4xl font-bold">
+            {userAccountInfo?.type === 'company'
+              ? 'Comparte tu conocimiento.'
+              : 'Tu Contenido'}
+          </h2>
+
+          {userAccountInfo?.type === 'company' && (
+            <p className="mb-7">
+              Publica contenido relevante, visible sólo para los usuarios de tu
+              empresa, fomentando la colaboración y el intercambio de
+              conocimiento.
+            </p>
+          )}
         </div>
 
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-4xl font-bold mt-10 mb-7">
-              {userAccountInfo?.type === 'company' ? 'Comparte tu conocimiento.': 'Tu Contenido'}
-            </h2>            
-            {userAccountInfo?.type === 'company' && (
-              <p className="mb-7">
-                Publica contenido relevante, visible sólo para los usuarios de tu empresa, fomentando la colaboración y el intercambio de conocimiento.
-              </p>
-            )}
-            
-          </div>
-          <div className="flex gap-3">
-            {/*<Button variant="secondary" outline>
-              View all
-            </Button>*/}
-            <Button primary onClick={() => navigate('create')}>
-              <PlusCircleIcon strokeWidth={2} className="h-4 w-4" /> Agregar
-              Contenido
-            </Button>
-          </div>
+        <div className="flex gap-3">
+          <Button primary onClick={() => navigate('new')}>
+            <PlusCircleIcon strokeWidth={2} className="h-4 w-4" /> Agregar
+            Contenido
+          </Button>
         </div>
-
-        <Card className="h-full w-full bg-gray-800">
-          <CardBody className="overflow-y-auto px-0">
-            {isFetching && (
-              <div className="flex justify-center">
-                <Spinner className="h-8 w-8"></Spinner>
-              </div>
-            )}
-            {data && data.length > 0 && <ContentTable data={data} />}
-            {data && data.length === 0 && (
-              <div className="flex justify-center">
-                <Typography
-                  variant="small"
-                  color="white"
-                  className="font-normal"
-                >
-                  No has publicado ningún contenido.
-                </Typography>
-              </div>
-            )}
-          </CardBody>
-          {/*<CardFooter className="flex items-center justify-between border-t border-blue-gray-50 p-4">
-            <Typography
-              variant="small"
-              color="blue-gray"
-              className="font-normal"
-            >
-              Page 1 of 10
-            </Typography>
-            <div className="flex gap-2">
-              <Button variant="secondary" outline>
-                Previous
-              </Button>
-              <Button outline variant="secondary">
-                Next
-              </Button>
-            </div>
-          </CardFooter>*/}
-        </Card>
       </div>
-    </>
+
+      <Card className="h-full w-full bg-gray-800">
+        <CardBody className="overflow-y-auto px-0">
+          {isFetching && (
+            <div className="flex justify-center">
+              <Spinner className="h-8 w-8"></Spinner>
+            </div>
+          )}
+
+          {data && data.length > 0 && <ContentTable data={data} />}
+
+          {data && data.length === 0 && (
+            <div className="flex justify-center">
+              <Typography
+                variant="small"
+                color="white"
+                className="font-normal"
+              >
+                No has publicado ningún contenido.
+              </Typography>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+    </div>
   );
 
   return withNavbar({ children: pageContent });

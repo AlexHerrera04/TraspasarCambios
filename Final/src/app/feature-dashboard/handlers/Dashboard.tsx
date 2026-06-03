@@ -10,7 +10,10 @@ import CompanyLearningRoutes from '../components/CompanyLearningRoutes';
 import CardGrid from 'src/app/feature-browser/components/CardGrid';
 import { useRef } from 'react';
 
-const GOALS_TEXT = 'De metas cumplidas';
+type DashboardLanguage = 'es' | 'en';
+type CardType = 'default' | 'goals' | 'score';
+
+const APP_LANGUAGE_KEY = 'appLanguage';
 
 const DoughnutChart = (props: any) => {
   const { data } = props;
@@ -52,7 +55,7 @@ const DoughnutChart = (props: any) => {
   ) : null;
 };
 
-const DigitalADN = ({ query }: any) => {
+const DigitalADN = ({ query, copy }: any) => {
   const navigate = useNavigate();
 
   const getCapacitiesComparison = () => {
@@ -73,7 +76,7 @@ const DigitalADN = ({ query }: any) => {
 
       const data = [
         {
-          name: 'Operative',
+          name: copy.operative,
           color: '#50C6DF',
           value:
             (prom.operative * 100) /
@@ -81,7 +84,7 @@ const DigitalADN = ({ query }: any) => {
           offset: 25,
         },
         {
-          name: 'Strategic',
+          name: copy.strategic,
           color: '#EFD385',
           value:
             (prom.strategic * 100) /
@@ -89,7 +92,7 @@ const DigitalADN = ({ query }: any) => {
           offset: 0,
         },
         {
-          name: 'Tactic',
+          name: copy.tactic,
           color: '#A78BFF',
           value:
             (prom.tactic * 100) /
@@ -123,7 +126,7 @@ const DigitalADN = ({ query }: any) => {
         navigate('/diagnosticador');
       }}
     >
-      <h2 className="text-xl font-semibold">ADN DIGITAL</h2>
+      <h2 className="text-xl font-semibold">{copy.digitalAdn}</h2>
 
       <div className="mt-6 flex items-center justify-center gap-5">
         <DoughnutChart data={getCapacitiesComparison()} />
@@ -145,7 +148,14 @@ const DigitalADN = ({ query }: any) => {
   );
 };
 
-const Card = ({ isFetching, value, text, goalsRef }: any) => {
+const Card = ({
+  isFetching,
+  value,
+  text,
+  goalsRef,
+  cardType = 'default',
+  detailLabel,
+}: any) => {
   const navigate = useNavigate();
 
   return isFetching ? (
@@ -161,14 +171,16 @@ const Card = ({ isFetching, value, text, goalsRef }: any) => {
         <Button
           outline
           onClick={() => {
-            if (text === GOALS_TEXT) {
+            if (cardType === 'goals') {
               goalsRef.current?.scrollIntoView({ behavior: 'smooth' });
+            } else if (cardType === 'score') {
+              navigate('/score-history');
             } else {
               navigate('/diagnosticador');
             }
           }}
         >
-          <span className="text-base">Ver detalle</span>
+          <span className="text-base">{detailLabel}</span>
         </Button>
       </div>
     </div>
@@ -176,6 +188,54 @@ const Card = ({ isFetching, value, text, goalsRef }: any) => {
 };
 
 const Dashboard = () => {
+  const language: DashboardLanguage =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          breadcrumb: 'Home > My Dashboard',
+          digitalAdn: 'DIGITAL DNA',
+          operative: 'Operative',
+          strategic: 'Strategic',
+          tactic: 'Tactic',
+          avgMaturity: 'Average maturity level',
+          goalsCompleted: 'Completed goals',
+          score: 'Score',
+          viewDetail: 'View detail',
+          goals: 'My Goals',
+          routes: 'My Learning Routes',
+          history: 'My History',
+          viewAll: 'View all',
+          popularLinks: 'Most popular links',
+          link1: 'Add capabilities of interest to your Digital DNA',
+          link2: 'Discover the highest rated content from other users',
+          link3: 'Access new Personal Wellbeing courses',
+          link4: 'I want to help co-create Open KX',
+          contentForYou: 'Content for you',
+        }
+      : {
+          breadcrumb: 'Inicio > Mi Panel',
+          digitalAdn: 'ADN DIGITAL',
+          operative: 'Operative',
+          strategic: 'Strategic',
+          tactic: 'Tactic',
+          avgMaturity: 'Promedio general de madurez',
+          goalsCompleted: 'De metas cumplidas',
+          score: 'Score',
+          viewDetail: 'Ver detalle',
+          goals: 'Mis Metas',
+          routes: 'Mis Rutas de Aprendizaje',
+          history: 'Mi Historial',
+          viewAll: 'Ver todo',
+          popularLinks: 'Enlaces más populares',
+          link1: 'Agrega capacidades de tu interés a tu ADN Digital',
+          link2: 'Conoce los contenidos más valorados por otros usuarios',
+          link3: 'Accede a nuevos cursos de Bienestar Personal',
+          link4: 'Quiero sumarme a co-crear Open KX',
+          contentForYou: 'Contenido para ti',
+        };
+
   const navigate = useNavigate();
   const { userAccountInfo } = useUser();
   const goalsRef = useRef<HTMLDivElement>(null);
@@ -267,44 +327,49 @@ const Dashboard = () => {
     <div className="container mx-auto pb-10">
       <NewsTicker />
 
-      <h2 className="my-10 text-4xl font-semibold">Inicio &gt; Mi Panel</h2>
+      <h2 className="my-10 text-4xl font-semibold">{copy.breadcrumb}</h2>
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[4fr_3fr_3fr_3fr]">
-        <DigitalADN query={pieChartQuery} />
+        <DigitalADN query={pieChartQuery} copy={copy} />
         <Card
           isFetching={capacitiesQuery.isFetching}
           value={getGeneralCapacitiesMean()}
-          text="Promedio general de madurez"
+          text={copy.avgMaturity}
+          detailLabel={copy.viewDetail}
         />
         <Card
           isFetching={goalsQuery.isFetching}
           value={getGoalsProgress()}
-          text={GOALS_TEXT}
+          text={copy.goalsCompleted}
           goalsRef={goalsRef}
+          cardType="goals"
+          detailLabel={copy.viewDetail}
         />
         <Card
           isFetching={capacitiesQuery.isFetching}
           value={userAccountInfo?.total_score ?? 0}
-          text="Score"
+          text={copy.score}
+          cardType="score"
+          detailLabel={copy.viewDetail}
         />
       </div>
 
       <div ref={goalsRef}>
-        <h2 className="mt-20 text-xl font-semibold">Mis Metas</h2>
+        <h2 className="mt-20 text-xl font-semibold">{copy.goals}</h2>
         <Goals />
       </div>
 
       <div className="mt-20">
-        <h2 className="text-xl font-semibold">Mis Rutas de Aprendizaje</h2>
+        <h2 className="text-xl font-semibold">{copy.routes}</h2>
         <div className="mt-4">
           <CompanyLearningRoutes />
         </div>
       </div>
 
       <div className="mt-20 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Mi Historial</h2>
+        <h2 className="text-xl font-semibold">{copy.history}</h2>
         <Button variant="primary" onClick={() => navigate('/history')}>
-          Ver todo
+          {copy.viewAll}
         </Button>
       </div>
 
@@ -315,7 +380,7 @@ const Dashboard = () => {
         ></CardGrid>
       </div>
 
-      <h2 className="mt-20 text-xl font-semibold">Enlaces más populares</h2>
+      <h2 className="mt-20 text-xl font-semibold">{copy.popularLinks}</h2>
       <div className="grid-sm grid grid-cols-1 md:grid-cols-2">
         <div className="flex-1 p-3">
           <div
@@ -324,7 +389,7 @@ const Dashboard = () => {
               navigate('/diagnosticador/selector');
             }}
           >
-            Agrega capacidades de tu interés a tu ADN Digital
+            {copy.link1}
           </div>
         </div>
 
@@ -335,7 +400,7 @@ const Dashboard = () => {
               navigate('/explorer');
             }}
           >
-            Conoce los contenidos más valorados por otros usuarios
+            {copy.link2}
           </div>
         </div>
 
@@ -346,7 +411,7 @@ const Dashboard = () => {
               navigate('/explorer?filter=Wellness');
             }}
           >
-            Accede a nuevos cursos de Bienestar Personal
+            {copy.link3}
           </div>
         </div>
 
@@ -356,16 +421,16 @@ const Dashboard = () => {
             to="https://docs.google.com/forms/d/e/1FAIpQLSeHRRNhHreKp9rEh1PRcIBr-FC-prAxFOWdkgP7XtiuHlDyOQ/viewform"
           >
             <div className="rounded-lg bg-primary-700 p-3 text-center text-sm font-bold hover:bg-primary-800">
-              Quiero sumarme a co-crear Open KX
+              {copy.link4}
             </div>
           </Link>
         </div>
       </div>
 
       <div className="mt-20 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Contenido para ti</h2>
+        <h2 className="text-xl font-semibold">{copy.contentForYou}</h2>
         <Button variant="primary" onClick={() => navigate('/explorer')}>
-          Ver todo
+          {copy.viewAll}
         </Button>
       </div>
 

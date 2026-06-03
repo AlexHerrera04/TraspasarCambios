@@ -17,9 +17,11 @@ type AccordionProps = PropsWithChildren<{
 }>;
 
 type PersonalityId = 'motivador' | 'pragmatico' | 'brutal';
+type AppLanguage = 'es' | 'en';
 
 const LEGACY_PERSONALITY_KEY = 'personalidadCoach';
 const COACH_PERSONALITY_KEY = 'desktopCoachPersonality';
+const APP_LANGUAGE_KEY = 'appLanguage';
 
 const COACH_PERSONALITIES: Array<{
   id: PersonalityId;
@@ -223,6 +225,22 @@ const OptionChip = ({
   );
 };
 
+const PreferenceRow = ({
+  label,
+  children,
+}: PropsWithChildren<{ label: string }>) => {
+  return (
+    <div className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-gray-900 px-4 py-3 text-left transition hover:bg-white/5 sm:px-5">
+      <span className="shrink-0 text-sm font-medium text-gray-400">
+        {label}
+      </span>
+      <div className="flex max-w-[55%] flex-nowrap items-center justify-end gap-2 overflow-x-auto whitespace-nowrap">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 const MvpNoticeCard = ({ publicName }: { publicName?: string | null }) => {
   return (
     <div className="mb-6 rounded-3xl border border-white/10 bg-gray-800 p-6">
@@ -232,7 +250,10 @@ const MvpNoticeCard = ({ publicName }: { publicName?: string | null }) => {
             FeedBack
           </p>
           <p className="mt-3 text-sm leading-6 text-gray-300">
-              Hola {publicName || 'usuario'}, nos encantaría saber tu opinión para adaptarnos a tus necesidades, cualquier comentario será bienvenido así que no dudes en darnos tu feedback para seguir mejorando tu experiencia con OpenKX.
+            Hola {publicName || 'usuario'}, nos encantaría saber tu opinión para
+            adaptarnos a tus necesidades, cualquier comentario será bienvenido
+            así que no dudes en darnos tu feedback para seguir mejorando tu
+            experiencia con OpenKX.
           </p>
         </div>
 
@@ -260,6 +281,9 @@ const Profile: FunctionComponent = () => {
   const { userInfo, userAccountInfo, setUserInfo, setUserAccountInfo } =
     useUser();
 
+  const [language, setLanguage] = useState<AppLanguage>(() =>
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es'
+  );
   const [darkMode, setDarkMode] = useState<boolean>(
     localStorage.getItem('darkMode') === 'false' ? false : true
   );
@@ -289,6 +313,10 @@ const Profile: FunctionComponent = () => {
   }, []);
 
   const likedCount = userAccountInfo?.liked_contents?.length || 0;
+
+  useEffect(() => {
+    localStorage.setItem(APP_LANGUAGE_KEY, language);
+  }, [language]);
 
   useEffect(() => {
     localStorage.setItem('darkMode', String(darkMode));
@@ -354,7 +382,8 @@ const Profile: FunctionComponent = () => {
               </p>
               <h1 className="mt-2 text-3xl font-bold text-white">Perfil</h1>
               <p className="mt-2 text-sm text-gray-300">
-                Tu cuenta, tus preferencias y tu contexto personal en un solo sitio.
+                Tu cuenta, tus preferencias y tu contexto personal en un solo
+                sitio.
               </p>
             </div>
           </div>
@@ -468,10 +497,7 @@ const Profile: FunctionComponent = () => {
                 label="Función"
                 value={joinValues(userAccountInfo?.function)}
               />
-              <InfoRow
-                label="Nivel"
-                value={joinValues(userAccountInfo?.level)}
-              />
+              <InfoRow label="Nivel" value={joinValues(userAccountInfo?.level)} />
               <InfoRow label="Tipo de cuenta" value={accountType} />
             </div>
           </ProfileAccordion>
@@ -506,90 +532,84 @@ const Profile: FunctionComponent = () => {
             title="Preferencias"
             description="Ajustes personales y configuración del coach."
           >
-            <div className="space-y-5">
+            <div className="space-y-3">
+              <PreferenceRow label="Idioma">
+                <OptionChip
+                  active={language === 'es'}
+                  onClick={() => setLanguage('es')}
+                >
+                  Español
+                </OptionChip>
+                <OptionChip
+                  active={language === 'en'}
+                  onClick={() => setLanguage('en')}
+                >
+                  English
+                </OptionChip>
+              </PreferenceRow>
+
               <InfoRow
                 label="Modo claro"
                 value={darkMode ? 'OFF' : 'ON'}
                 action={() => setDarkMode((current) => !current)}
               />
 
-              <div className="rounded-2xl border border-white/10 bg-gray-900 px-4 py-4 sm:px-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <span className="text-sm font-medium text-gray-400">
-                    Frecuencia de desafío semanal
-                  </span>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    {opcionesFrecuencia.map((option) => {
-                      const blocked = option !== 5;
+              <PreferenceRow label="Frecuencia de desafío semanal">
+                {opcionesFrecuencia.map((option) => {
+                  const blocked = option !== 5;
 
-                      return (
-                        <OptionChip
-                          key={option}
-                          active={frecDesafio === option}
-                          disabled={blocked}
-                          title={
-                            blocked ? 'Temporalmente no disponible' : undefined
-                          }
-                          onClick={() => setFrecDesafio(option)}
-                        >
-                          {option}
-                        </OptionChip>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+                  return (
+                    <OptionChip
+                      key={option}
+                      active={frecDesafio === option}
+                      disabled={blocked}
+                      title={
+                        blocked ? 'Temporalmente no disponible' : undefined
+                      }
+                      onClick={() => setFrecDesafio(option)}
+                    >
+                      {option}
+                    </OptionChip>
+                  );
+                })}
+              </PreferenceRow>
 
-              <div className="rounded-2xl border border-white/10 bg-gray-900 px-4 py-4 sm:px-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <span className="text-sm font-medium text-gray-400">
-                    Preguntas por desafío
-                  </span>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    {opcionesPreguntas.map((option) => {
-                      const blocked = ![5, 10].includes(option);
+              <PreferenceRow label="Preguntas por desafío">
+                {opcionesPreguntas.map((option) => {
+                  const blocked = ![5, 10].includes(option);
 
-                      return (
-                        <OptionChip
-                          key={option}
-                          active={numPreguntas === option}
-                          disabled={blocked}
-                          title={
-                            blocked ? 'Temporalmente no disponible' : undefined
-                          }
-                          onClick={() => setNumPreguntas(option)}
-                        >
-                          {option}
-                        </OptionChip>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+                  return (
+                    <OptionChip
+                      key={option}
+                      active={numPreguntas === option}
+                      disabled={blocked}
+                      title={
+                        blocked ? 'Temporalmente no disponible' : undefined
+                      }
+                      onClick={() => setNumPreguntas(option)}
+                    >
+                      {option}
+                    </OptionChip>
+                  );
+                })}
+              </PreferenceRow>
 
               <InfoRow
                 label="Target semanal"
                 value={`${targetSemanal} puntos`}
               />
 
-              <div className="rounded-2xl border border-white/10 bg-gray-900 px-4 py-4 sm:px-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <span className="text-sm font-medium text-gray-400">
-                    Personalidad de mi Coach AI
-                  </span>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    {COACH_PERSONALITIES.map((option) => (
-                      <OptionChip
-                        key={option.id}
-                        active={personalidadCoach === option.id}
-                        onClick={() => setPersonalidadCoach(option.id)}
-                      >
-                        {option.emoji} {option.label}
-                      </OptionChip>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <PreferenceRow label="Personalidad de mi Coach AI">
+                {COACH_PERSONALITIES.map((option) => (
+                  <OptionChip
+                    key={option.id}
+                    active={personalidadCoach === option.id}
+                    onClick={() => setPersonalidadCoach(option.id)}
+                  >
+                    {option.emoji} {option.label}
+                  </OptionChip>
+                ))}
+              </PreferenceRow>
 
               <InfoRow
                 label="Recomendaciones de mi Coach AI"

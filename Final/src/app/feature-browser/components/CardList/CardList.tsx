@@ -40,6 +40,7 @@ export const List = ({
   title,
   handleFilter,
   showSeeAll = true,
+  onRemoveItem,
 }: any) => {
   const params = useParams();
   const location = useLocation();
@@ -147,6 +148,7 @@ export const List = ({
                 <Card
                   key={card.id}
                   isSelected={params?.id === card.id}
+                  onRemove={onRemoveItem}
                   {...card}
                 />
               </Link>

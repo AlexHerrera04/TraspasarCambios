@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
@@ -7,27 +7,20 @@ import {
   Button,
   Chip,
   Dialog,
-  DialogHeader,
   DialogBody,
   DialogFooter,
+  DialogHeader,
   IconButton,
   Rating,
-  Typography,
   Spinner,
+  Typography,
 } from '@material-tailwind/react';
-import {
-  HeartIcon,
-  CheckCircleIcon,
-  ChevronLeftIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import Backdrop from '../components/Backdrop';
 import Table from '../../ui/Table';
 import { toast } from 'react-toastify';
 import withNavbar from 'src/app/core/handlers/withNavbar';
-import UseCaseModal from '../components/UseCaseModal';
 import api from 'src/app/core/api/apiProvider';
 import TextModal from '../components/TextModal';
 import PdfModal from '../components/PdfModal';
@@ -35,8 +28,6 @@ import addfavoriteIcon from 'src/assets/icons/add-favorite.svg';
 import removeFavoriteIcon from 'src/assets/icons/remove-favorite.svg';
 import contactIcon from 'src/assets/icons/contact.svg';
 import ContentPlaceholder from '../components/ContentPlaceholder';
-
-import { set } from 'lodash';
 import ExternalContentModal from '../components/ExternalContentModal';
 
 const StyledMotionDiv = styled.div.attrs({
@@ -49,34 +40,6 @@ const StyledRating = styled(Rating).attrs({})`
     height: 100%;
   }
 `;
-
-const dropIn = {
-  hidden: {
-    y: '70vh',
-    opacity: 0,
-  },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: 'spring',
-      bounce: 0.1,
-      duration: 0.6,
-    },
-  },
-  exit: {
-    y: '100vh',
-    opacity: 0,
-    transition: {
-      type: 'spring',
-      bounce: 0,
-      duration: 1,
-    },
-  },
-};
-
-const featureImage =
-  'https://images.unsplash.com/photo-1573537805874-4cedc5d389ce?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80';
 
 const OpenCardHeaderContainer = styled(motion.div).attrs({
   className: 'my-4 flex flex-col md:flex-row gap-8 items-start w-full',
@@ -132,20 +95,20 @@ const OpenCardHeaderFeatureImage = ({ data }: any) => {
 const OpenCardHeaderActionsRatings = ({ data }: any) => {
   const rating = data.rating ? Math.round(Number(data.rating)) : 0;
   const reviews = data.number_of_reviews ? data.number_of_reviews : 0;
-  
+
   const handleRatingChange = async (value: number) => {
     try {
       const response = await api.patch(
         `${import.meta.env.VITE_API_URL}/contents/submit_rating/${data.id}`,
         { rating: value }
       );
-      
+
       if (response.status === 200) {
         await api.post(`${import.meta.env.VITE_API_URL}/scoring/interaction`, {
           interaction_type: 'Review',
           content: data.id,
         });
-        
+
         toast.success('Rating submitted successfully!', {
           position: toast.POSITION.BOTTOM_LEFT,
         });
@@ -165,7 +128,7 @@ const OpenCardHeaderActionsRatings = ({ data }: any) => {
 
   return (
     <div className="flex justify-center gap-2 p-1">
-      <StyledRating 
+      <StyledRating
         value={rating}
         onChange={(value: number) => handleRatingChange(value)}
       />
@@ -202,12 +165,10 @@ const OpenCardHeaderActionsCategory = ({ data }: any) => {
 const OpenCardHeaderActionsTags = ({ data }: any) => {
   const colors = ['light-green', 'indigo', 'pink'];
   const functionsTags = (data.function ? data.function : ['N/A']).map(
-    (item: any) => {
-      return {
-        color: colors[Math.floor(Math.random() * colors.length)],
-        value: item,
-      };
-    }
+    (item: any) => ({
+      color: colors[Math.floor(Math.random() * colors.length)],
+      value: item,
+    })
   );
 
   return (
@@ -229,9 +190,9 @@ const OpenCardHeaderActionsTags = ({ data }: any) => {
 const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(!open);
-  
+
   const { data, isFetching } = useQuery({
-    queryKey: ['getContactAccountInfo'],
+    queryKey: ['getContactAccountInfo', contactID],
     enabled: !!contactID,
     queryFn: async () => {
       const { data } = await api.get(
@@ -243,13 +204,18 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
 
   return (
     <>
-      <Button variant="outlined" onClick={handleOpen}>
-        <img 
-          src={contactIcon} 
-          alt="contact-button" 
-          className={'w-7 h-7 filter brightness-0 invert'}
+      <Button
+        variant="outlined"
+        onClick={handleOpen}
+        className="flex items-center justify-center p-2"
+      >
+        <img
+          src={contactIcon}
+          alt="contact-button"
+          className="w-7 h-7 filter brightness-0 invert"
         />
       </Button>
+
       <Dialog
         open={open}
         handler={handleOpen}
@@ -259,30 +225,47 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
         }}
         className="bg-dark-600/95"
       >
-        <DialogHeader className="text-label">Contact</DialogHeader>
+        <DialogHeader className="text-label">Contacto</DialogHeader>
         <DialogBody divider>
           {isFetching ? (
             <div>Loading...</div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2 text-800">
-                <Typography variant="h6">Email: </Typography>
+            <div className="flex flex-col gap-4">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <Typography variant="small" className="mb-1 text-white/50">
+                  Email
+                </Typography>
                 <Typography variant="paragraph">
-                  {data.contact_email ?? 'N/A'}
+                  {data?.contact_email ?? 'N/A'}
                 </Typography>
               </div>
-              <div className="flex gap-2 text-800">
-                <Typography variant="h6">Phone: </Typography>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <Typography variant="small" className="mb-1 text-white/50">
+                  Teléfono
+                </Typography>
                 <Typography variant="paragraph">
-                  {data.phone_number ?? 'N/A'}
+                  {data?.phone_number ?? 'N/A'}
                 </Typography>
               </div>
-              <div className="flex gap-2 text-800">
-                <Typography variant="h6">Porfolio Link: </Typography>
-                <Typography variant="paragraph">
-                  {data.portfolio_link && <a href={data.porfolio_link}>Link</a>}
-                  {!data.portfolio_link && 'N/A'}
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <Typography variant="small" className="mb-3 text-white/50">
+                  Portfolio
                 </Typography>
+
+                {data?.portfolio_link ? (
+                  <a
+                    href={data.portfolio_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center rounded-full border border-violet-300/30 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/30"
+                  >
+                    Abrir portfolio
+                  </a>
+                ) : (
+                  <Typography variant="paragraph">N/A</Typography>
+                )}
               </div>
             </div>
           )}
@@ -314,17 +297,20 @@ const OpenCardHeaderActionsCTAs = ({ data }: any) => {
 
   const toggleLike = () => {
     const values = { content_id: data.id };
-    const is_liked_by_user = data.is_liked_by_user
+    const is_liked_by_user = data.is_liked_by_user;
+
     mutation.mutate(values, {
-      onSuccess: (data) => {
+      onSuccess: () => {
         toast.success(
-          is_liked_by_user 
-          ? 'Removed from your favorites!'
-          : 'Added to your favorites!', {
-          position: toast.POSITION.BOTTOM_LEFT,
-        })        
+          is_liked_by_user
+            ? 'Removed from your favorites!'
+            : 'Added to your favorites!',
+          {
+            position: toast.POSITION.BOTTOM_LEFT,
+          }
+        );
       },
-      onError: (error) => {
+      onError: () => {
         toast.error('Please, try again', {
           position: toast.POSITION.BOTTOM_LEFT,
         });
@@ -333,42 +319,32 @@ const OpenCardHeaderActionsCTAs = ({ data }: any) => {
   };
 
   return (
-    <div className="flex gap-4 mt-2">
+    <div className="mt-3 flex flex-wrap gap-4">
       {data.origin !== 'public' && data.origin !== 'community' && (
         <OpenCardHeaderActionsCTAsContactMethodDialog contactID={data.user} />
       )}
-      <Button 
-        variant='outlined'
-        className={`flex items-center gap-3`}
-        onClick={toggleLike}>        
-        <img 
-          src={data.is_liked_by_user ? removeFavoriteIcon : addfavoriteIcon} 
-          alt="favorite-button" 
-          className={'w-6 h-6 filter brightness-0 invert'}
+
+      <Button
+        variant="outlined"
+        className="flex items-center gap-3 rounded-full border-white/15 bg-white/5 px-4 py-2.5 shadow-lg shadow-black/10 transition-all hover:border-white/25 hover:bg-white/10"
+        onClick={toggleLike}
+      >
+        <img
+          src={data.is_liked_by_user ? removeFavoriteIcon : addfavoriteIcon}
+          alt="favorite-button"
+          className="h-6 w-6 filter brightness-0 invert"
         />
       </Button>
     </div>
   );
 };
 
-const OpenCardHeaderActionsAvatar = ({ data }: any) => {
-  return (
-    <div className="flex items-center gap-4">
-      <Typography variant="h3">{data?.name}</Typography>
-    </div>
-  );
-};
-
-function formatNumber(num: string) {
-  return `$ ${num}`;
-}
-
 const OpenCardHeaderActionsPrice = ({ data }: any) => {
-  const price = data.price ? formatNumber(data.price) : formatNumber('0.00');
+  const price = data.price ? `$ ${data.price}` : '$ 0.00';
 
   return (
     <Typography variant="h5">
-      {price === formatNumber('0.00') ? 'FREE' : price}
+      {price === '$ 0.00' ? 'FREE' : price}
     </Typography>
   );
 };
@@ -377,7 +353,6 @@ const OpenCardHeaderActions = (props: any) => {
   return (
     <div className="flex flex-col items-start gap-2 w-3/5">
       <Typography variant="h3">{props.data?.name}</Typography>
-
       <OpenCardHeaderActionsRatings data={props.data} />
       <OpenCardHeaderActionsCategory data={props.data} />
       <OpenCardHeaderActionsTags data={props.data} />
@@ -394,7 +369,6 @@ const OpenCardHeader = (props: any) => {
         <OpenCardHeaderActions data={props.data} />
       </OpenCardHeaderContainer>
       <OpenCardHeaderUserPriceContainer>
-        {/* <OpenCardHeaderActionsAvatar data={props.data} /> */}
         <OpenCardHeaderActionsPrice data={props.data} />
       </OpenCardHeaderUserPriceContainer>
     </>
@@ -404,17 +378,18 @@ const OpenCardHeader = (props: any) => {
 const OpenCardHeaderResourcesTable = (props: any) => {
   const { id } = props.data;
   const { handleShowContent } = props;
+
   const { data, isFetching } = useQuery({
-    queryKey: ['getAssets'],
+    queryKey: ['getAssets', id],
     enabled: !!id,
     queryFn: async () => {
       const { data } = await api.get(
         `${import.meta.env.VITE_API_URL}/assets/content/${id}`
       );
 
-      //extract url using regex from description
       const regex = /\bhttps?:\/\/\S+/g;
       const url = props.data.description.match(regex);
+
       if (url && url.length > 0) {
         data.unshift({
           content: 0,
@@ -429,10 +404,10 @@ const OpenCardHeaderResourcesTable = (props: any) => {
     },
   });
 
-  const triggerEvent = (id: number) => {
+  const triggerEvent = (contentId: number) => {
     api.post(`${import.meta.env.VITE_API_URL}/scoring/interaction`, {
       interaction_type: 'Download',
-      content: id,
+      content: contentId,
     });
   };
 
@@ -455,7 +430,9 @@ const OpenCardHeaderResourcesTable = (props: any) => {
       id: 'download',
       header: '',
       cell: (ctx: any) => {
-        const { location_url, file_extension, type, id, content } = ctx.row.original;
+        const { location_url, file_extension, type, id, content } =
+          ctx.row.original;
+
         return (
           <Button
             className="normal-case text-sm font-normal tracking-wide p-3 bg-blue-800"
@@ -463,10 +440,10 @@ const OpenCardHeaderResourcesTable = (props: any) => {
               triggerEvent(content);
 
               if (file_extension === '.txt') {
-                handleShowContent(id);
+                handleShowContent(String(id));
               } else if (file_extension === '.pdf') {
                 handleShowContent(null, location_url);
-              } else if (location_url.includes('/embed/')) {
+              } else if (location_url?.includes('/embed/')) {
                 handleShowContent(null, location_url);
               } else {
                 window.open(location_url, '_blank');
@@ -543,16 +520,18 @@ const Details = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const handleClose = useCallback(() => navigate(-1), [navigate]);
+
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showPdfModal, setShowPdfModal] = useState<boolean>(false);
-  const [showExternalContentModal, setShowExternalContentModal] = useState<boolean>(false);
+  const [showExternalContentModal, setShowExternalContentModal] =
+    useState<boolean>(false);
 
   const [fileUrl, setFileUrl] = useState<string>('');
   const [pdfFile, setPdfFile] = useState<string>('');
   const [embededUrl, setEmbededUrl] = useState<string>('');
 
   const { data, isFetching } = useQuery({
-    queryKey: ['getCard'],
+    queryKey: ['getCard', id],
     enabled: !!id,
     queryFn: async () => {
       const { data } = await api.get(
@@ -571,17 +550,18 @@ const Details = () => {
   const handleModal = () => {
     setShowModal((current: boolean) => !current);
   };
+
   const handlePdfModal = () => {
     setShowPdfModal((current: boolean) => !current);
   };
+
   const handleExternalContentModal = () => {
     setShowExternalContentModal((current: boolean) => !current);
   };
 
-  const showContent = (id: string, url?: string) => {
-    console.log(id, url)
-    if (id) {
-      setFileUrl(id);
+  const showContent = (textId: string | null, url?: string) => {
+    if (textId) {
+      setFileUrl(textId);
       setShowModal(true);
     } else if (url && url.includes('/embed/')) {
       setEmbededUrl(url);
@@ -624,6 +604,7 @@ const Details = () => {
         {embededUrl && (
           <ExternalContentModal
             fileUrl={embededUrl}
+            content={data}
             handleOpen={handleExternalContentModal}
             open={showExternalContentModal}
           ></ExternalContentModal>

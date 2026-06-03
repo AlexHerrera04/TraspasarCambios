@@ -30,35 +30,55 @@ import WikiLogo from '/src/assets/images/wiki-logo2.svg';
 import api from 'src/app/core/api/apiProvider';
 import { getNoLeidas } from '../../feature-notifications/utils/notificaciones';
 
+const APP_LANGUAGE_KEY = 'appLanguage';
+
 const ROUTES = [
   {
     path: '/home',
-    name: 'Inicio',
+    name: {
+      es: 'Inicio',
+      en: 'Home',
+    },
     access: ['company'],
   },
   {
     path: '/explorer',
-    name: 'Explorador',
+    name: {
+      es: 'Explorador',
+      en: 'Explorer',
+    },
     access: ['company'],
   },
   {
     path: '/diagnosticador',
-    name: 'Diagnosticador',
+    name: {
+      es: 'Diagnosticador',
+      en: 'Diagnosticator',
+    },
     access: ['company'],
   },
   {
     path: '/content',
-    name: 'Colaborador',
+    name: {
+      es: 'Colaborador',
+      en: 'Collaborator',
+    },
     access: ['company', 'expert'],
   },
   {
     path: '/contributor',
-    name: 'Contribuidor',
+    name: {
+      es: 'Contribuidor',
+      en: 'Contributor',
+    },
     access: ['company'],
   },
   {
     path: '/admin',
-    name: 'Administrador',
+    name: {
+      es: 'Administrador',
+      en: 'Administrator',
+    },
     access: ['company'],
     requiresAdmin: true,
   },
@@ -70,6 +90,21 @@ function ProfileMenu({ data }: any) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const closeMenu = () => setIsMenuOpen(false);
   const navigate = useNavigate();
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          profile: 'Profile',
+          history: 'History',
+          signOut: 'Sign out',
+        }
+      : {
+          profile: 'Perfil',
+          history: 'Historial',
+          signOut: 'Cerrar sesión',
+        };
 
   const handleLogout = React.useCallback(() => {
     closeMenu();
@@ -124,7 +159,7 @@ function ProfileMenu({ data }: any) {
         >
           <UserIcon className="h-4 w-4" strokeWidth={2} />
           <Typography as="span" variant="small" className="font-normal">
-            Perfil
+            {copy.profile}
           </Typography>
         </MenuItem>
 
@@ -135,7 +170,7 @@ function ProfileMenu({ data }: any) {
         >
           <ClockIcon className="h-4 w-4" strokeWidth={2} />
           <Typography as="span" variant="small" className="font-normal">
-            Historial
+            {copy.history}
           </Typography>
         </MenuItem>
 
@@ -151,7 +186,7 @@ function ProfileMenu({ data }: any) {
             className="font-normal"
             color="red"
           >
-            Cerrar sesión
+            {copy.signOut}
           </Typography>
         </MenuItem>
       </MenuList>
@@ -224,6 +259,8 @@ export default function ComplexNavbar({ children }: any) {
     useUser();
   const location = useLocation();
   const navigate = useNavigate();
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
 
   const { data: localUserInfo } = useQuery({
     queryKey: ['userInfo', token],
@@ -287,7 +324,7 @@ export default function ComplexNavbar({ children }: any) {
             }
           >
             <Link to={item.path} className="flex items-center">
-              {item.name}
+              {item.name[language]}
             </Link>
           </Typography>
         ) : (

@@ -12,6 +12,7 @@ import { toast } from 'react-toastify';
 
 const LEARNING_ROUTES_STORAGE_KEY = 'admin-learning-routes';
 const COMPLETED_CARDS_STORAGE_KEY = 'admin-learning-routes-completed-cards';
+const APP_LANGUAGE_KEY = 'appLanguage';
 
 type StoredRoute = {
   id: string;
@@ -80,17 +81,33 @@ const normalizeRoute = (route: any): StoredRoute => ({
 });
 
 const getDurationLabel = (days: number) => {
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  if (language === 'en') {
+    if (days === 1) return '1 estimated day';
+    return `${days} estimated days`;
+  }
+
   if (days === 1) return '1 día estimado';
   return `${days} días estimados`;
 };
 
 const getDeadlineText = (route: StoredRoute) => {
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
   if (route.hard_deadline_enabled && route.hard_deadline_date) {
     const today = new Date();
     const deadline = new Date(route.hard_deadline_date);
     const diffInDays = Math.ceil(
       (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
+
+    if (language === 'en') {
+      if (diffInDays > 1) return `${diffInDays} days remaining`;
+      if (diffInDays === 1) return '1 day remaining';
+      if (diffInDays === 0) return 'Due today';
+      return 'Overdue';
+    }
 
     if (diffInDays > 1) return `${diffInDays} días restantes`;
     if (diffInDays === 1) return '1 día restante';
@@ -113,6 +130,39 @@ const hasCertificate = (route: StoredRoute) =>
   route.certification === 'total';
 
 export default function CompanyLearningRoutes() {
+  const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
+  const copy =
+    language === 'en'
+      ? {
+          evaluationUnavailable: 'The evaluation is not available yet',
+          routeFinished: 'Route completed, congratulations',
+          progress: 'Progress',
+          access: 'Open',
+          routeDone: 'I completed the route',
+          noEvaluation: 'No evaluation',
+          doEvaluation: 'Take evaluation',
+          viewAssessment: 'View assessment',
+          singleCertificate: 'Single certificate',
+          generalCertificate: 'General certificate',
+          empty: 'You have no assigned routes',
+          featureInProgress: 'Feature in development',
+        }
+      : {
+          evaluationUnavailable: 'La evaluación todavía no está disponible',
+          routeFinished: 'Ruta finalizada, enhorabuena',
+          progress: 'Progreso',
+          access: 'Acceder',
+          routeDone: 'He finalizado la ruta',
+          noEvaluation: 'Sin evaluación',
+          doEvaluation: 'Hacer evaluación',
+          viewAssessment: 'Ver assessment',
+          singleCertificate: 'Certificado único',
+          generalCertificate: 'Certificado general',
+          empty: 'No tienes rutas asignadas',
+          featureInProgress: 'Funcionalidad en desarrollo',
+        };
+
   const [routes, setRoutes] = useState<StoredRoute[]>([]);
   const [expandedParentIds, setExpandedParentIds] = useState<string[]>([]);
   const [completedCards, setCompletedCards] = useState<Record<string, boolean>>(
@@ -208,7 +258,7 @@ export default function CompanyLearningRoutes() {
 
   const handleEvaluation = (route: StoredRoute) => {
     if (!route.evaluation) {
-      toast('La evaluación todavía no está disponible');
+      toast(copy.evaluationUnavailable);
       return;
     }
     if (route.evaluation_type === 'quiz') {
@@ -232,14 +282,14 @@ export default function CompanyLearningRoutes() {
     if (progress >= 100) {
       return (
         <span className="text-sm font-medium text-emerald-300">
-          Ruta finalizada, enhorabuena
+          {copy.routeFinished}
         </span>
       );
     }
 
     return (
       <>
-        <span className="text-white/55">Progreso</span>
+        <span className="text-white/55">{copy.progress}</span>
         <span className="font-medium text-white/80">{progress}%</span>
       </>
     );
@@ -274,7 +324,7 @@ export default function CompanyLearningRoutes() {
             outline
             onClick={() => handleAccess(contentId ?? route.contents[0]?.id)}
           >
-            Acceder
+            {copy.access}
           </Button>
 
           <span className="w-40 rounded-md border border-tertiary bg-tertiary/70 p-2 text-center text-sm">
@@ -289,7 +339,7 @@ export default function CompanyLearningRoutes() {
               id={checkboxUniqueId}
             />
             <label htmlFor={checkboxUniqueId} className="w-[170px]">
-              He finalizado la ruta
+              {copy.routeDone}
             </label>
           </div>
 
@@ -302,10 +352,10 @@ export default function CompanyLearningRoutes() {
               onClick={() => handleEvaluation(route)}
             >
               {route.evaluation_type === 'none'
-                ? 'Sin evaluación'
+                ? copy.noEvaluation
                 : route.evaluation_type === 'quiz'
-                  ? 'Hacer evaluación'
-                  : 'Ver assessment'}
+                  ? copy.doEvaluation
+                  : copy.viewAssessment}
             </Button>
           </div>
 
@@ -315,10 +365,10 @@ export default function CompanyLearningRoutes() {
               variant="secondary"
               className="w-44"
               disabled={!checked || !hasCertificate(route)}
-              onClick={() => toast('Funcionalidad en desarrollo')}
+              onClick={() => toast(copy.featureInProgress)}
             >
               <AcademicCapIcon className="mr-2 h-5 w-5" />
-              Certificado único
+              {copy.singleCertificate}
             </Button>
           </div>
         </div>
@@ -340,7 +390,7 @@ export default function CompanyLearningRoutes() {
   if (parentRoutes.length === 0) {
     return (
       <div className="my-3 flex items-center justify-between rounded-md border border-tertiary p-3">
-        <h2 className="text-base">No tienes rutas asignadas</h2>
+        <h2 className="text-base">{copy.empty}</h2>
       </div>
     );
   }
@@ -406,8 +456,8 @@ export default function CompanyLearningRoutes() {
                       onClick={() => handleEvaluation(route)}
                     >
                       {route.evaluation_type === 'quiz'
-                        ? 'Hacer evaluación'
-                        : 'Ver assessment'}
+                        ? copy.doEvaluation
+                        : copy.viewAssessment}
                     </Button>
                   </div>
                 )}
@@ -419,10 +469,10 @@ export default function CompanyLearningRoutes() {
                       variant="secondary"
                       className="w-44 text-xs"
                       disabled={!parentCompleted}
-                      onClick={() => toast('Funcionalidad en desarrollo')}
+                      onClick={() => toast(copy.featureInProgress)}
                     >
                       <AcademicCapIcon className="mr-2 h-5 w-5" />
-                      Certificado general
+                      {copy.generalCertificate}
                     </Button>
                   </div>
                 )}

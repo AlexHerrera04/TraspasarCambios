@@ -37,6 +37,7 @@ import EvaluatorFeedbackDetail from '../feature-contributions/components/Evaluat
 import Notifications from '../feature-notifications/handlers/Notifications';
 import Coach from '../feature-coach/handlers/Coach';
 import withNavbar from '../core/handlers/withNavbar';
+import ScoreHistory from '../feature-score/handlers/ScoreHistory';
 
 const Routes = () => {
   const routesForAuthUsers = [
@@ -89,6 +90,16 @@ const Routes = () => {
             {
               path: '',
               element: <Coach />,
+            },
+          ],
+        },
+        {
+          path: '/score-history',
+          element: <Outlet />,
+          children: [
+            {
+              path: '',
+              element: <ScoreHistory />,
             },
           ],
         },
@@ -250,7 +261,7 @@ const Routes = () => {
         },
         {
           path: '/admin/goals/assign',
-          element: <AssignGoal />
+          element: <AssignGoal />,
         },
         {
           path: '/evaluador/login',
