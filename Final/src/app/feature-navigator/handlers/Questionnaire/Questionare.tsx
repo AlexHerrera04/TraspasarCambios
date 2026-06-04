@@ -10,7 +10,6 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { Spinner } from '@material-tailwind/react';
 import api from 'src/app/core/api/apiProvider';
-import { number } from 'yup';
 import Chip from 'src/app/ui/Chip';
 import React from 'react';
 
@@ -20,7 +19,7 @@ const StyledHeader = styled.h2`
   font-size: 36px;
   color: #fff;
   font-weight: 700;
-  line-height: 133%; /* 47.88px */
+  line-height: 133%;
   margin-top: 1rem;
 `;
 
@@ -36,6 +35,7 @@ function WikiInsightsTitle({ themes, active }: any) {
     name: q.theme_name,
     selected: i == active,
   }));
+
   return (
     <StyledTitleContainer>
       <div className="flex gap-2">
@@ -71,8 +71,6 @@ export function mapQuestions(questions: any) {
  */
 export function mapWizardSteps(questions: any) {
   const questionsPerPage = mapQuestions(questions);
-
-  function validateInput() {}
 
   return map(questionsPerPage, (questionArray, index) => {
     return (
@@ -112,7 +110,7 @@ export function mapWizardSteps(questions: any) {
 }
 
 export function QuestionareWizard({
-  data: { questions, theme_name, theme_id },
+  data: { questions, theme_id },
   handleSubmit,
 }: {
   data: any;
@@ -121,7 +119,7 @@ export function QuestionareWizard({
   const { userID } = useUser();
   const [isSubmitting, setSubmitting] = useState(false);
 
-  const goal_id = localStorage.getItem('goal')
+  const goal_id = localStorage.getItem('goal');
 
   questions = questions.map((q: any, i: number) => ({ ...q, position: i + 1 }));
 
@@ -131,18 +129,19 @@ export function QuestionareWizard({
         `${import.meta.env.VITE_API_URL}/diagnoses/upload-survey`,
         values
       );
-      
-      // Second API call - update goal status related to assestment
-      await api.patch(
-        `${import.meta.env.VITE_API_URL}/goals/update/${goal_id}/`,
-        {
-          status: 'done'
-        }
-      );
+
+      if (goal_id) {
+        await api.patch(
+          `${import.meta.env.VITE_API_URL}/goals/update/${goal_id}/`,
+          {
+            status: 'done',
+          }
+        );
+      }
     },
   });
 
-  const onSubmit = useCallback((values: any, bag: any) => {
+  const onSubmit = useCallback((values: any) => {
     setSubmitting(true);
 
     const mappedValues = map(values, (value, key) => {
@@ -159,21 +158,21 @@ export function QuestionareWizard({
     };
 
     mutation.mutate(valuesToUpload, {
-      onSuccess: (data) => {
+      onSuccess: () => {
         toast.success('¡Encuesta completada exitosamente!', {
           position: toast.POSITION.BOTTOM_LEFT,
         });
         setSubmitting(false);
         handleSubmit();
       },
-      onError: (error) => {
+      onError: () => {
         toast.error('Hubo un error, por favor intenta de nuevo', {
           position: toast.POSITION.BOTTOM_LEFT,
         });
         setSubmitting(false);
       },
     });
-  }, []);
+  }, [goal_id, handleSubmit, mutation, theme_id, userID]);
 
   return (
     <Wizard initialValues={{}} onSubmit={onSubmit} isSubmitting={isSubmitting}>

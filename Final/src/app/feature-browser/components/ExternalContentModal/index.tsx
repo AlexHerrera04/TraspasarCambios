@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import Backdrop from '../Backdrop';
 import Button from 'src/app/ui/Button';
+import api from 'src/app/core/api/apiProvider';
 import {
   ContinueWatchingContent,
   formatPlaybackTime,
@@ -61,8 +62,127 @@ const dropIn = {
 
 const YOUTUBE_IFRAME_API_URL = 'https://www.youtube.com/iframe_api';
 const SPOTIFY_IFRAME_API_SRC = 'https://open.spotify.com/embed/iframe-api/v1';
+const LEARNING_ROUTES_STORAGE_KEY = 'admin-learning-routes';
+const COMPLETED_CARDS_STORAGE_KEY = 'admin-learning-routes-completed-cards';
+const AUTO_COMPLETE_THRESHOLD = 0.95;
 
 let youtubeIframeApiPromise: Promise<any> | null = null;
+
+const safeReadLearningRoutes = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LEARNING_ROUTES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const safeReadCompletedCards = () => {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(COMPLETED_CARDS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const persistCompletedCards = (cards: Record<string, boolean>) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(
+    COMPLETED_CARDS_STORAGE_KEY,
+    JSON.stringify(cards)
+  );
+};
+
+const getRouteCardKey = (routeId: string, contentId?: number | string | null) =>
+  contentId != null ? `${routeId}-${contentId}` : `${routeId}-single`;
+
+const markLearningRouteContentAsCompleted = (
+  contentId?: number | string | null
+) => {
+  if (contentId === undefined || contentId === null) {
+    return;
+  }
+
+  const routes = safeReadLearningRoutes();
+  if (!routes.length) {
+    return;
+  }
+
+  const completedCards = safeReadCompletedCards();
+  let hasChanges = false;
+
+  routes.forEach((route: any) => {
+    const contents = Array.isArray(route?.contents) ? route.contents : [];
+    const matchedContent = contents.find(
+      (content: any) => String(content?.id) === String(contentId)
+    );
+
+    if (!matchedContent) {
+      return;
+    }
+
+    const key = getRouteCardKey(String(route.id), matchedContent.id);
+
+    if (!completedCards[key]) {
+      completedCards[key] = true;
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    persistCompletedCards(completedCards);
+  }
+};
+
+const markGoalsContentAsCompleted = async (
+  contentId?: number | string | null
+) => {
+  if (contentId === undefined || contentId === null) {
+    return;
+  }
+
+  try {
+    const { data } = await api.get(`${import.meta.env.VITE_API_URL}/goals`);
+    const goals = Array.isArray(data) ? data : [];
+
+    const matchingGoals = goals.filter((goal: any) => {
+      return (
+        String(goal?.content) === String(contentId) &&
+        goal?.content_type !== 'quiz' &&
+        goal?.status !== 'done'
+      );
+    });
+
+    await Promise.all(
+      matchingGoals.map((goal: any) =>
+        api
+          .patch(`${import.meta.env.VITE_API_URL}/goals/update/${goal.id}/`, {
+            ...goal,
+            status: 'done',
+          })
+          .catch(() => null)
+      )
+    );
+  } catch {
+    return;
+  }
+};
 
 const loadYoutubeIframeApi = () => {
   if (typeof window === 'undefined') {
@@ -180,6 +300,7 @@ const ExternalContentModal = ({
   const syncIntervalRef = React.useRef<number | null>(null);
   const spotifyContainerRef = React.useRef<HTMLDivElement | null>(null);
   const spotifyControllerRef = React.useRef<any>(null);
+  const autoCompleteTriggeredRef = React.useRef(false);
 
   const [playerReady, setPlayerReady] = React.useState(false);
   const [savedProgress, setSavedProgress] = React.useState(
@@ -206,12 +327,39 @@ const ExternalContentModal = ({
     setSavedProgress(getContinueWatchingByContentId(content?.id));
   }, [content?.id, fileUrl, open]);
 
+  React.useEffect(() => {
+    autoCompleteTriggeredRef.current = false;
+  }, [content?.id, fileUrl, open]);
+
   const clearSyncInterval = React.useCallback(() => {
     if (syncIntervalRef.current) {
       window.clearInterval(syncIntervalRef.current);
       syncIntervalRef.current = null;
     }
   }, []);
+
+  const tryAutoCompleteAssignedItems = React.useCallback(
+    async (currentTime: number, duration: number) => {
+      if (autoCompleteTriggeredRef.current) {
+        return;
+      }
+
+      if (!content?.id || duration <= 0) {
+        return;
+      }
+
+      const progressRatio = currentTime / duration;
+      if (progressRatio < AUTO_COMPLETE_THRESHOLD) {
+        return;
+      }
+
+      autoCompleteTriggeredRef.current = true;
+
+      markLearningRouteContentAsCompleted(content.id);
+      await markGoalsContentAsCompleted(content.id);
+    },
+    [content?.id]
+  );
 
   const persistProgress = React.useCallback(() => {
     if (!content || !playerRef.current) {
@@ -229,11 +377,13 @@ const ExternalContentModal = ({
         duration,
       });
 
+      void tryAutoCompleteAssignedItems(currentTime, duration);
+
       setSavedProgress(getContinueWatchingByContentId(content.id));
     } catch {
       return;
     }
-  }, [content, fileUrl]);
+  }, [content, fileUrl, tryAutoCompleteAssignedItems]);
 
   React.useEffect(() => {
     if (!open || !isYoutubeContent || !youtubeVideoId) {
@@ -296,6 +446,9 @@ const ExternalContentModal = ({
               if (event.data === youtubeWindow.YT.PlayerState.ENDED) {
                 clearSyncInterval();
 
+                const duration = Number(event.target.getDuration?.() || 0);
+                void tryAutoCompleteAssignedItems(duration, duration);
+
                 if (content?.id !== undefined && content?.id !== null) {
                   removeContinueWatchingItem(content.id);
                 }
@@ -329,6 +482,7 @@ const ExternalContentModal = ({
     isYoutubeContent,
     open,
     persistProgress,
+    tryAutoCompleteAssignedItems,
     youtubeVideoId,
   ]);
 

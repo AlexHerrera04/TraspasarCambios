@@ -340,6 +340,9 @@ export default function ComplexNavbar({ children }: any) {
   const navList = (
     <ul className="mb-4 mt-2 flex flex-col gap-6 lg:mb-0 lg:mt-0 lg:flex-row lg:items-center">
       {ROUTES.map((item: any, i) => {
+        const label =
+          isExpert && item.path === '/content' ? 'Partner' : item.name[language];
+
         return item.access.includes(userAccountInfo?.type) &&
           (!item.requiresAdmin ||
             userAccountInfo?.is_account_admin ||
@@ -355,7 +358,7 @@ export default function ComplexNavbar({ children }: any) {
             }
           >
             <Link to={item.path} className="flex items-center">
-              {item.name[language]}
+              {label}
             </Link>
           </Typography>
         ) : (

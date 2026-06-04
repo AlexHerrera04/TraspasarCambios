@@ -165,6 +165,7 @@ export default function CompanyLearningRoutes() {
 
   const [routes, setRoutes] = useState<StoredRoute[]>([]);
   const [expandedParentIds, setExpandedParentIds] = useState<string[]>([]);
+  const [expandedChildIds, setExpandedChildIds] = useState<string[]>([]);
   const [completedCards, setCompletedCards] = useState<Record<string, boolean>>(
     {}
   );
@@ -182,7 +183,12 @@ export default function CompanyLearningRoutes() {
       )
       .map((route) => route.id);
 
+    const childIds = loadedRoutes
+      .filter((route) => Boolean(route.parent_route_id))
+      .map((route) => route.id);
+
     setExpandedParentIds(parentIdsWithChildren);
+    setExpandedChildIds(childIds);
   }, []);
 
   const childMap = useMemo(() => {
@@ -221,6 +227,16 @@ export default function CompanyLearningRoutes() {
       return route.contents.map((c) => cardKey(route.id, c.id));
     }
     return [cardKey(route.id, route.contents[0]?.id)];
+  };
+
+  const getRouteProgress = (
+    route: StoredRoute,
+    cards: Record<string, boolean>
+  ) => {
+    const keys = getCardKeysForRoute(route);
+    if (keys.length === 0) return 0;
+    const completedCount = keys.filter((key) => cards[key]).length;
+    return Math.round((completedCount / keys.length) * 100);
   };
 
   const getParentProgress = (
@@ -276,9 +292,15 @@ export default function CompanyLearningRoutes() {
     );
   };
 
-  const renderProgressInfo = (parentRoute: StoredRoute) => {
-    const progress = getParentProgress(parentRoute, completedCards);
+  const toggleChild = (routeId: string) => {
+    setExpandedChildIds((current) =>
+      current.includes(routeId)
+        ? current.filter((id) => id !== routeId)
+        : [...current, routeId]
+    );
+  };
 
+  const renderProgressInfo = (progress: number) => {
     if (progress >= 100) {
       return (
         <span className="text-sm font-medium text-emerald-300">
@@ -387,6 +409,93 @@ export default function CompanyLearningRoutes() {
     return [renderRouteCard(route, title, route.contents[0]?.id)];
   };
 
+  const renderChildRoute = (child: StoredRoute) => {
+    const isExpanded = expandedChildIds.includes(child.id);
+    const progress = getRouteProgress(child, completedCards);
+    const fullyCompleted = progress >= 100;
+    const showEvaluation =
+      child.evaluation_type !== 'none' && Boolean(child.evaluation);
+    const showCertificate = hasCertificate(child);
+
+    return (
+      <div
+        key={child.id}
+        className="ml-6 mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"
+      >
+        <button
+          type="button"
+          onClick={() => toggleChild(child.id)}
+          className="w-full text-left"
+        >
+          <div className="flex items-center gap-2">
+            <p className="truncate text-lg font-medium text-white/95">
+              {child.name}
+            </p>
+
+            {isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4 shrink-0 text-white/80" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-white/80" />
+            )}
+          </div>
+
+          <div className="mt-3 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-primary-500 transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="mt-2 flex items-center justify-between text-sm">
+                {renderProgressInfo(progress)}
+              </div>
+            </div>
+
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary-500/20 bg-primary-500/10 px-3 py-1.5 text-sm font-medium text-primary-100">
+              <ClockIcon className="h-4 w-4" />
+              {getDeadlineText(child)}
+            </span>
+
+            {showEvaluation && (
+              <div className="hidden shrink-0 sm:block">
+                <Button
+                  outline
+                  variant="primary"
+                  className="w-44"
+                  disabled={!fullyCompleted}
+                  onClick={() => handleEvaluation(child)}
+                >
+                  {child.evaluation_type === 'quiz'
+                    ? copy.doEvaluation
+                    : copy.viewAssessment}
+                </Button>
+              </div>
+            )}
+
+            {showCertificate && (
+              <div className="hidden shrink-0 sm:block">
+                <Button
+                  outline
+                  variant="secondary"
+                  className="w-44 text-xs"
+                  disabled={!fullyCompleted}
+                  onClick={() => toast(copy.featureInProgress)}
+                >
+                  <AcademicCapIcon className="mr-2 h-5 w-5" />
+                  {copy.singleCertificate}
+                </Button>
+              </div>
+            )}
+          </div>
+        </button>
+
+        {isExpanded && <div className="mt-4">{renderRouteCards(child)}</div>}
+      </div>
+    );
+  };
+
   if (parentRoutes.length === 0) {
     return (
       <div className="my-3 flex items-center justify-between rounded-md border border-tertiary p-3">
@@ -435,7 +544,7 @@ export default function CompanyLearningRoutes() {
                   </div>
 
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    {renderProgressInfo(route)}
+                    {renderProgressInfo(parentProgress)}
                   </div>
                 </div>
 
@@ -482,7 +591,7 @@ export default function CompanyLearningRoutes() {
             {isExpanded && (
               <div className="mt-4">
                 {route.contents.length > 0 && renderRouteCards(route)}
-                {children.flatMap((child) => renderRouteCards(child))}
+                {children.map((child) => renderChildRoute(child))}
               </div>
             )}
           </div>

@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Progress, Spinner } from '@material-tailwind/react';
 import { Form, Formik } from 'formik';
 import { toast } from 'react-toastify';
@@ -5,7 +6,6 @@ import api from 'src/app/core/api/apiProvider';
 import Button from 'src/app/ui/Button';
 import TextInput from 'src/app/ui/TextInput';
 import * as Yup from 'yup';
-import { useState } from 'react';
 import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 
 const inputClassName =
@@ -41,7 +41,7 @@ const FileField = ({
   setFieldValue: (field: string, value: any) => void;
 }) => (
   <div>
-    <label className="block mb-2 text-sm text-gray-300" htmlFor={name}>
+    <label className="mb-2 block text-sm text-gray-300" htmlFor={name}>
       {label}
     </label>
     <input
@@ -58,14 +58,65 @@ const FileField = ({
 );
 
 const About = ({
+  language,
   userInfo,
   onClick,
 }: {
+  language: 'es' | 'en';
   userInfo: any;
   onClick: Function;
 }) => {
   const { userInfo: sessionUserInfo, userAccountInfo } = useUser();
   const [isLoading, setIsLoading] = useState(false);
+
+  const copy =
+    language === 'en'
+      ? {
+          step: '1/2',
+          title: 'Personal information',
+          sectionTitle: 'Identification details',
+          email: 'Company email',
+          phone: 'Phone number',
+          sourceCompany: 'Company of origin',
+          organization: 'Associated company',
+          portfolio: 'Link to your portfolio',
+          firstName: 'First name',
+          lastName: 'Last name',
+          publicName: 'Public name',
+          visualTitle: 'Visual profile',
+          visualDescription:
+            'Both images are optional, but we recommend uploading at least one so your profile looks more complete.',
+          profilePicture: 'Profile picture',
+          wikiAvatar: 'Wiki avatar',
+          next: 'Next',
+          required: 'Required',
+          invalidEmail: 'Invalid email',
+          invalidUrl: 'Invalid URL',
+          publicNameTaken: 'The public name is already in use.',
+        }
+      : {
+          step: '1/2',
+          title: 'Información personal',
+          sectionTitle: 'Datos de identificación',
+          email: 'Mail de empresa',
+          phone: 'Teléfono',
+          sourceCompany: 'Empresa Proveniente',
+          organization: 'Empresa Asociada',
+          portfolio: 'Link de tu portfolio',
+          firstName: 'Nombre',
+          lastName: 'Apellido',
+          publicName: 'Nombre público',
+          visualTitle: 'Perfil visual',
+          visualDescription:
+            'Ambas imágenes son opcionales, pero te recomendamos subir al menos una para que tu perfil sea más atractivo.',
+          profilePicture: 'Foto de perfil',
+          wikiAvatar: 'Avatar wiki',
+          next: 'Siguiente',
+          required: 'Obligatorio',
+          invalidEmail: 'Email inválido',
+          invalidUrl: 'URL inválida',
+          publicNameTaken: 'El nombre público ya está en uso.',
+        };
 
   const handleSubmit = async (values: any) => {
     const normalizedPublicName = values.public_name.trim();
@@ -81,7 +132,7 @@ const About = ({
       setIsLoading(false);
 
       if (!data.is_available) {
-        toast.error('El nombre público ya está en uso.', {
+        toast.error(copy.publicNameTaken, {
           position: toast.POSITION.BOTTOM_LEFT,
         });
         return;
@@ -95,7 +146,8 @@ const About = ({
       public_name: normalizedPublicName,
       contact_email: values.contact_email.trim(),
       phone_number: values.phone_number.trim(),
-      organization: 'Acme',
+      source_company: values.source_company.trim(),
+      organization: values.organization,
       portfolio_link: values.portfolio_link.trim(),
       profile_picture: values.profile_picture || null,
       wiki_avatar: values.wiki_avatar || null,
@@ -112,15 +164,12 @@ const About = ({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary-300">
-              1/2
+              {copy.step}
             </p>
             <h1 className="mt-2 text-3xl font-bold text-white">
-              Datos personales
+              {copy.title}
             </h1>
           </div>
-          <p className="max-w-2xl text-sm text-gray-400">
-            
-          </p>
         </div>
       </div>
 
@@ -136,6 +185,7 @@ const About = ({
             sessionUserInfo?.email ||
             '',
           phone_number: userInfo.phone_number || userAccountInfo?.phone_number || '',
+          source_company: userInfo.source_company || '',
           organization: 'Acme',
           portfolio_link:
             userInfo.portfolio_link || userAccountInfo?.portfolio_link || '',
@@ -143,13 +193,16 @@ const About = ({
           wiki_avatar: null,
         }}
         validationSchema={Yup.object({
-          first_name: Yup.string().required('Required'),
-          last_name: Yup.string().required('Required'),
-          public_name: Yup.string().required('Required'),
-          contact_email: Yup.string().email('Invalid email').required('Required'),
-          phone_number: Yup.string().required('Required'),
-          organization: Yup.string().required('Required'),
-          portfolio_link: Yup.string().url('Invalid URL').nullable(),
+          first_name: Yup.string().required(copy.required),
+          last_name: Yup.string().required(copy.required),
+          public_name: Yup.string().required(copy.required),
+          contact_email: Yup.string()
+            .email(copy.invalidEmail)
+            .required(copy.required),
+          phone_number: Yup.string().required(copy.required),
+          source_company: Yup.string(),
+          organization: Yup.string().required(copy.required),
+          portfolio_link: Yup.string().url(copy.invalidUrl).nullable(),
         })}
         onSubmit={handleSubmit}
       >
@@ -162,14 +215,14 @@ const About = ({
           setFieldValue,
         }) => (
           <Form className="space-y-6">
-            <SectionCard
-              title="Información personal"
-              description="Estos datos identifican al experto dentro de la plataforma."
-            >
+            <SectionCard title={copy.sectionTitle}>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="first_name">
-                    Nombre
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="first_name"
+                  >
+                    {copy.firstName}
                   </label>
                   <TextInput
                     id="first_name"
@@ -186,8 +239,11 @@ const About = ({
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="last_name">
-                    Apellido
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="last_name"
+                  >
+                    {copy.lastName}
                   </label>
                   <TextInput
                     id="last_name"
@@ -204,8 +260,11 @@ const About = ({
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="public_name">
-                    Nombre público
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="public_name"
+                  >
+                    {copy.publicName}
                   </label>
                   <TextInput
                     id="public_name"
@@ -223,8 +282,11 @@ const About = ({
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="contact_email">
-                    Mail
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="contact_email"
+                  >
+                    {copy.email}
                   </label>
                   <TextInput
                     id="contact_email"
@@ -241,8 +303,11 @@ const About = ({
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="phone_number">
-                    Teléfono
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="phone_number"
+                  >
+                    {copy.phone}
                   </label>
                   <TextInput
                     id="phone_number"
@@ -259,8 +324,30 @@ const About = ({
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="organization">
-                    Empresa asociada
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="source_company"
+                  >
+                    {copy.sourceCompany}
+                  </label>
+                  <TextInput
+                    id="source_company"
+                    name="source_company"
+                    size="lg"
+                    value={values.source_company}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={inputClassName}
+                    labelProps={{ className: 'before:content-none after:content-none' }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="organization"
+                  >
+                    {copy.organization}
                   </label>
                   <TextInput
                     id="organization"
@@ -273,9 +360,12 @@ const About = ({
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="portfolio_link">
-                    Enlace de portfolio
+                <div>
+                  <label
+                    className="mb-2 block text-sm text-gray-300"
+                    htmlFor="portfolio_link"
+                  >
+                    {copy.portfolio}
                   </label>
                   <TextInput
                     id="portfolio_link"
@@ -294,17 +384,17 @@ const About = ({
             </SectionCard>
 
             <SectionCard
-              title="Perfil visual"
-              description="Ambas imágenes son opcionales, pero te recomendamos subir al menos una para que tu perfil sea más atractivo."
+              title={copy.visualTitle}
+              description={copy.visualDescription}
             >
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <FileField
-                  label="Foto de perfil"
+                  label={copy.profilePicture}
                   name="profile_picture"
                   setFieldValue={setFieldValue}
                 />
                 <FileField
-                  label="Avatar wiki"
+                  label={copy.wikiAvatar}
                   name="wiki_avatar"
                   setFieldValue={setFieldValue}
                 />
@@ -313,8 +403,8 @@ const About = ({
 
             <div className="flex justify-end">
               <Button type="submit" primary disabled={isLoading}>
-                {isLoading ? <Spinner className="h-4 w-4 mr-3" /> : null}
-                Siguiente
+                {isLoading ? <Spinner className="mr-3 h-4 w-4" /> : null}
+                {copy.next}
               </Button>
             </div>
           </Form>

@@ -8,6 +8,13 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 
+type AppLanguage = 'es' | 'en';
+
+const APP_LANGUAGE_KEY = 'appLanguage';
+
+const getStoredLanguage = (): AppLanguage =>
+  localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+
 const cardVariants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0 },
@@ -20,6 +27,7 @@ type OnboardingUserInfo = {
   public_name?: string;
   contact_email?: string;
   phone_number?: string;
+  source_company?: string;
   organization?: string;
   portfolio_link?: string;
   profile_picture?: File | null;
@@ -68,6 +76,7 @@ const Onboarding: FunctionComponent = () => {
   const { userInfo: sessionUserInfo, userAccountInfo } = useUser();
 
   const [index, setIndex] = React.useState(0);
+  const [language, setLanguage] = React.useState<AppLanguage>(getStoredLanguage);
   const [userInfo, setUserInfo] = React.useState<OnboardingUserInfo>({
     first_name: sessionUserInfo?.first_name || '',
     last_name: sessionUserInfo?.last_name || '',
@@ -75,6 +84,7 @@ const Onboarding: FunctionComponent = () => {
     contact_email:
       userAccountInfo?.contact_email || sessionUserInfo?.email || '',
     phone_number: userAccountInfo?.phone_number || '',
+    source_company: '',
     organization: sessionUserInfo?.organization || 'Acme',
     portfolio_link: userAccountInfo?.portfolio_link || '',
     profile_picture: null,
@@ -88,6 +98,12 @@ const Onboarding: FunctionComponent = () => {
     tools: [],
     type: userAccountInfo?.type || 'expert',
   });
+
+  const updateLanguage = React.useCallback((newLanguage: AppLanguage) => {
+    setLanguage(newLanguage);
+    localStorage.setItem(APP_LANGUAGE_KEY, newLanguage);
+    window.dispatchEvent(new Event('app-language-change'));
+  }, []);
 
   const nextStep = async (
     newUserInfo: OnboardingUserInfo,
@@ -112,7 +128,12 @@ const Onboarding: FunctionComponent = () => {
           userPayload
         );
       } catch (error) {
-        console.error('No se pudo actualizar userinfo:', error);
+        console.error(
+          language === 'en'
+            ? 'Could not update userinfo:'
+            : 'No se pudo actualizar userinfo:',
+          error
+        );
       }
 
       if (newUserInfo.profile_picture || newUserInfo.wiki_avatar) {
@@ -142,12 +163,21 @@ const Onboarding: FunctionComponent = () => {
         });
       }
 
-      toast.success('Tu perfil ha sido actualizado correctamente.');
+      toast.success(
+        language === 'en'
+          ? 'Your profile has been updated successfully.'
+          : 'Tu perfil ha sido actualizado correctamente.'
+      );
       navigate('/content');
     } catch (error) {
-      toast.error('Something went wrong, please try again.', {
-        position: toast.POSITION.BOTTOM_LEFT,
-      });
+      toast.error(
+        language === 'en'
+          ? 'Something went wrong, please try again.'
+          : 'Algo salió mal, por favor inténtalo de nuevo.',
+        {
+          position: toast.POSITION.BOTTOM_LEFT,
+        }
+      );
     }
   };
 
@@ -157,12 +187,15 @@ const Onboarding: FunctionComponent = () => {
 
   const steps = [
     <Intro
+      language={language}
+      onLanguageChange={updateLanguage}
       onClick={() => {
         setIndex((current) => current + 1);
       }}
     />,
-    <About userInfo={userInfo} onClick={nextStep} />,
+    <About language={language} userInfo={userInfo} onClick={nextStep} />,
     <ProfessionalsDetails
+      language={language}
       userInfo={userInfo}
       nextStep={nextStep}
       previousStep={previousStep}
@@ -171,7 +204,6 @@ const Onboarding: FunctionComponent = () => {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
-
       <motion.div
         initial="hidden"
         animate="visible"

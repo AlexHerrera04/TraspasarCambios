@@ -33,6 +33,7 @@ interface Props extends CardData {
 
 const LOCAL_QUICK_SUMMARY_API_URL = 'http://localhost:3001/api/quick-summary';
 const YOUTUBE_SOURCE_PATTERN = /\b(?:youtube|youtu\.be|yt)\b/i;
+const APP_LANGUAGE_KEY = 'appLanguage';
 
 const StyledQuickSummaryModal = styled(motion.div).attrs({
   className:
@@ -116,10 +117,21 @@ const QuickSummaryFeatureImage = ({
 const QuickSummaryActions = ({
   name,
   handleClose,
+  language,
 }: {
   name: string;
   handleClose: () => void;
+  language: 'es' | 'en';
 }) => {
+  const copy =
+    language === 'en'
+      ? {
+          summary: 'Summary',
+        }
+      : {
+          summary: 'Resumen',
+        };
+
   return (
     <div className="flex w-full items-start justify-between px-8">
       <Breadcrumbs
@@ -141,7 +153,7 @@ const QuickSummaryActions = ({
         }
       >
         <a className="opacity-80">Wiki</a>
-        <a className="opacity-80">Quick Summary</a>
+        <a className="opacity-80">{copy.summary}</a>
         <a className="font-bold">{name}</a>
       </Breadcrumbs>
 
@@ -157,12 +169,14 @@ const QuickSummaryActions = ({
   );
 };
 
-const LoadingState = () => {
+const LoadingState = ({ language }: { language: 'es' | 'en' }) => {
   return (
     <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-5">
       <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/15 border-t-primary-500" />
       <Typography variant="paragraph" className="text-center text-white/80">
-        Preparando los aspectos destacados...
+        {language === 'en'
+          ? 'Preparing the highlights...'
+          : 'Preparando los aspectos destacados...'}
       </Typography>
     </div>
   );
@@ -177,6 +191,7 @@ const QuickSummaryBody = ({
   summary,
   isCachedSummary,
   onOpenDetails,
+  language,
 }: {
   title: string;
   type: string;
@@ -186,7 +201,21 @@ const QuickSummaryBody = ({
   summary: string;
   isCachedSummary: boolean;
   onOpenDetails: () => void;
+  language: 'es' | 'en';
 }) => {
+  const copy =
+    language === 'en'
+      ? {
+          cached: 'Loaded from local cache',
+          title: 'Highlights from this content',
+          details: 'View details',
+        }
+      : {
+          cached: 'Cargado desde cache local',
+          title: 'Aspectos destacados de este contenido',
+          details: 'Ver detalle',
+        };
+
   return (
     <div className="w-full p-4">
       <div className="my-4 flex w-full flex-col gap-8">
@@ -198,19 +227,17 @@ const QuickSummaryBody = ({
 
             {isCachedSummary && (
               <Typography variant="small" className="text-[11px] text-gray-500">
-                Cargado desde cache local
+                {copy.cached}
               </Typography>
             )}
           </div>
         </div>
 
         <div className="w-full">
-          <Typography variant="h6">
-            Aspectos destacados de este contenido
-          </Typography>
+          <Typography variant="h6">{copy.title}</Typography>
 
           <div className="mt-3 min-h-[220px] w-full rounded-2xl border border-white/10 bg-black/10 p-5">
-            {isLoading && <LoadingState />}
+            {isLoading && <LoadingState language={language} />}
 
             {!isLoading && error && (
               <Typography variant="paragraph" className="text-red-300">
@@ -226,7 +253,7 @@ const QuickSummaryBody = ({
 
         <div className="flex w-full justify-end">
           <Button primary type="button" onClick={onOpenDetails}>
-            Ver detalle
+            {copy.details}
           </Button>
         </div>
       </div>
@@ -266,6 +293,21 @@ const fetchQuickSummaryFromLocalServer = async (
 
 export const Card = (props: Props) => {
   const navigate = useNavigate();
+  const language =
+    localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+  const copy =
+    language === 'en'
+      ? {
+          summaryButton: 'View summary',
+          remove: 'Remove',
+          quickSummaryError: 'Could not generate the summary.',
+        }
+      : {
+          summaryButton: 'Ver resumen',
+          remove: 'Quitar',
+          quickSummaryError: 'No se ha podido generar el resumen.',
+        };
+
   const hasImage = !!props.public_image;
   const sourceLabel = props.external_source || props.origin || '';
   const isYoutubeContent = YOUTUBE_SOURCE_PATTERN.test(sourceLabel);
@@ -325,9 +367,7 @@ export const Card = (props: Props) => {
       localStorage.setItem(cacheKey, summary);
       setQuickSummaryText(summary);
     } catch (error: any) {
-      setQuickSummaryError(
-        error?.message || 'No se ha podido generar el Quick Summary.'
-      );
+      setQuickSummaryError(error?.message || copy.quickSummaryError);
     } finally {
       setIsQuickSummaryLoading(false);
     }
@@ -353,6 +393,7 @@ export const Card = (props: Props) => {
               <QuickSummaryActions
                 name={props.name}
                 handleClose={handleCloseQuickSummary}
+                language={language}
               />
 
               <QuickSummaryBody
@@ -364,6 +405,7 @@ export const Card = (props: Props) => {
                 summary={quickSummaryText}
                 isCachedSummary={isCachedSummary}
                 onOpenDetails={handleGoToDetails}
+                language={language}
               />
             </StyledQuickSummaryModal>
           </Backdrop>,
@@ -405,16 +447,6 @@ export const Card = (props: Props) => {
                 : capitalize(props.origin)}
             </span>
           )}
-
-          {isQuickSummaryAvailable && (
-            <button
-              type="button"
-              onClick={handleQuickSummaryClick}
-              className="absolute bottom-2 right-2 rounded-full bg-primary-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-primary-900/30 transition hover:bg-primary-500"
-            >
-              Quick Summary
-            </button>
-          )}
         </motion.div>
 
         <motion.h2 className="mb-0 mt-3 text-lg font-bold">
@@ -429,15 +461,27 @@ export const Card = (props: Props) => {
             {props.rating}
           </motion.div>
 
-          {props.onRemove && (
-            <button
-              type="button"
-              onClick={handleRemoveClick}
-              className="rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-black/80"
-            >
-              Quitar
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {isQuickSummaryAvailable && (
+              <button
+                type="button"
+                onClick={handleQuickSummaryClick}
+                className="rounded-full bg-primary-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-primary-900/30 transition hover:bg-primary-500"
+              >
+                {copy.summaryButton}
+              </button>
+            )}
+
+            {props.onRemove && (
+              <button
+                type="button"
+                onClick={handleRemoveClick}
+                className="rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-black/80"
+              >
+                {copy.remove}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

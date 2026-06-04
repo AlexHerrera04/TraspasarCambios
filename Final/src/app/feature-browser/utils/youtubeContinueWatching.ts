@@ -25,6 +25,7 @@ export const YOUTUBE_CONTINUE_WATCHING_UPDATED =
   'youtube-continue-watching-updated';
 
 const STORAGE_KEY_PREFIX = 'browser-youtube-continue-watching';
+const COMPLETION_THRESHOLD = 0.95;
 
 const getScopedStorageKey = () => {
   if (typeof window === 'undefined') {
@@ -204,9 +205,13 @@ export const saveContinueWatchingItem = ({
     return;
   }
 
+  const progressRatio =
+    safeDuration > 0 ? safeCurrentTime / safeDuration : 0;
+
   const isCompleted =
     safeDuration > 0 &&
-    safeCurrentTime >= Math.max(safeDuration - 5, safeDuration * 0.97);
+    (progressRatio >= COMPLETION_THRESHOLD ||
+      safeCurrentTime >= Math.max(safeDuration - 5, safeDuration * COMPLETION_THRESHOLD));
 
   if (isCompleted) {
     removeContinueWatchingItem(content.id);

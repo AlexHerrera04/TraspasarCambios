@@ -51,6 +51,11 @@ const OpenCardHeaderUserPriceContainer = styled(motion.div).attrs({
 
 const OpenCardHeaderFeatureImage = ({ data }: any) => {
   const hasImage = !!data?.public_image;
+  const sourceLabel =
+    data?.external_source ||
+    (data?.origin !== 'public' && data?.origin !== 'community'
+      ? data?.origin
+      : '');
 
   return (
     <div className="rounded-md shadow-dark shadow-md transition-all w-96 max-w-full">
@@ -87,6 +92,21 @@ const OpenCardHeaderFeatureImage = ({ data }: any) => {
             {data.type}
           </motion.span>
         </motion.div>
+
+        {sourceLabel && (
+          <motion.div
+            layout="position"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute right-2 top-4 z-10 rounded bg-dark-600/90 px-4 py-2 shadow-lg shadow-dark backdrop-blur-sm"
+          >
+            <motion.span className="text-sm text-white">
+              {sourceLabel}
+            </motion.span>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );
@@ -453,8 +473,8 @@ const OpenCardHeaderResourcesTable = (props: any) => {
             {file_extension === '.txt' || file_extension === '.pdf'
               ? 'Leer'
               : type === 'url'
-              ? 'Abrir enlace'
-              : 'Descargar'}
+                ? 'Abrir enlace'
+                : 'Descargar'}
           </Button>
         );
       },

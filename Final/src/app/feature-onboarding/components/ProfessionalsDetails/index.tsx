@@ -1,3 +1,4 @@
+import React from 'react';
 import { Progress, Spinner } from '@material-tailwind/react';
 import Button from 'src/app/ui/Button';
 import BackButton from '../BackButton';
@@ -27,7 +28,46 @@ const SectionCard = ({
   </div>
 );
 
-const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
+const FieldHint = ({ children }: { children: React.ReactNode }) => (
+  <p className="mb-3 text-sm leading-6 text-gray-400">{children}</p>
+);
+
+const Highlight = ({ children }: { children: React.ReactNode }) => (
+  <span className="font-semibold text-white">{children}</span>
+);
+
+const ProfessionalsDetails = ({
+  language,
+  userInfo,
+  nextStep,
+  previousStep,
+}: {
+  language: 'es' | 'en';
+  userInfo: any;
+  nextStep: Function;
+  previousStep: () => void;
+}) => {
+  const copy =
+    language === 'en'
+      ? {
+          step: '2/2',
+          title: 'Technical information',
+          sectionTitle: 'Professional context',
+          placeholder: 'Select an option',
+          previous: 'Previous',
+          finish: 'Finish',
+          required: 'Required',
+        }
+      : {
+          step: '2/2',
+          title: 'Información técnica',
+          sectionTitle: 'Contexto profesional',
+          placeholder: 'Seleccionar una opción',
+          previous: 'Anterior',
+          finish: 'Finalizar',
+          required: 'Obligatorio',
+        };
+
   const results = useQueries({
     queries: [
       {
@@ -166,15 +206,12 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary-300">
-              2/2
+              {copy.step}
             </p>
             <h1 className="mt-2 text-3xl font-bold text-white">
-              Datos Técnicos
+              {copy.title}
             </h1>
           </div>
-          <p className="max-w-2xl text-sm text-gray-400">
-            
-          </p>
         </div>
       </div>
 
@@ -200,11 +237,11 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
           tools: tools.filter((o: any) => userInfo.tools?.includes(o.label)),
         }}
         validationSchema={Yup.object({
-          industry: Yup.array().min(1, 'Required').required('Required'),
-          function: Yup.array().min(1, 'Required').required('Required'),
-          capacity: Yup.array().min(1, 'Required').required('Required'),
-          level: Yup.array().min(1, 'Required').required('Required'),
-          profile: Yup.array().min(1, 'Required').required('Required'),
+          industry: Yup.array().min(1, copy.required).required(copy.required),
+          function: Yup.array().min(1, copy.required).required(copy.required),
+          capacity: Yup.array().min(1, copy.required).required(copy.required),
+          level: Yup.array().min(1, copy.required).required(copy.required),
+          profile: Yup.array().min(1, copy.required).required(copy.required),
           business_driver: Yup.array(),
           tools: Yup.array(),
         })}
@@ -212,15 +249,22 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
       >
         {({ values, handleBlur, setFieldValue }) => (
           <Form className="space-y-6">
-            <SectionCard
-              title="Contexto profesional"
-              description="Completa la información técnica y profesional de tu perfil."
-            >
+            <SectionCard title={copy.sectionTitle}>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="industry">
-                    Industria
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        The <Highlight>Industry</Highlight> indicates the sector
+                        where you have the most experience.
+                      </>
+                    ) : (
+                      <>
+                        La <Highlight>Industria</Highlight> indica el sector en el
+                        que tienes más experiencia.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -231,7 +275,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="industry"
                       value={values.industry}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('industry', selectedOption);
                       }}
@@ -241,9 +285,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="function">
-                    Área o función
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        Your <Highlight>Function</Highlight> describes the area
+                        where you contribute the most value.
+                      </>
+                    ) : (
+                      <>
+                        La <Highlight>Función</Highlight> describe el área donde
+                        aportas más valor.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -254,7 +308,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="function"
                       value={values.function}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('function', selectedOption);
                       }}
@@ -264,9 +318,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="level">
-                    Nivel
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        The <Highlight>Level</Highlight> reflects your seniority
+                        and depth of experience.
+                      </>
+                    ) : (
+                      <>
+                        El <Highlight>Nivel</Highlight> refleja tu seniority y tu
+                        profundidad de experiencia.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -277,7 +341,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="level"
                       value={values.level}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('level', selectedOption);
                       }}
@@ -287,9 +351,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="profile">
-                    Perfil (Business / Tech / BusinessTech)
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        The <Highlight>Profile</Highlight> defines whether your
+                        focus is.
+                      </>
+                    ) : (
+                      <>
+                        El <Highlight>Perfil</Highlight> define si tu enfoque es
+                        Business, Tech o BusinessTech.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -300,7 +374,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="profile"
                       value={values.profile}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('profile', selectedOption);
                       }}
@@ -310,9 +384,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="capacity">
-                    Capacidades
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        Your <Highlight>Capabilities</Highlight> summarize the
+                        skills and strengths you master.
+                      </>
+                    ) : (
+                      <>
+                        Las <Highlight>Capacidades</Highlight> resumen las
+                        habilidades y fortalezas que dominas.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -323,7 +407,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="capacity"
                       value={values.capacity}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('capacity', selectedOption);
                       }}
@@ -333,12 +417,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div>
-                  <label
-                    className="block mb-2 text-sm text-gray-300"
-                    htmlFor="business_driver"
-                  >
-                    Palancas de negocio
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        The <Highlight>Business drivers</Highlight> show the
+                        business outcomes you can enhance.
+                      </>
+                    ) : (
+                      <>
+                        Las <Highlight>Palancas</Highlight> muestran los
+                        resultados de negocio que puedes ayudar a mejorar.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -349,7 +440,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="business_driver"
                       value={values.business_driver}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('business_driver', selectedOption);
                       }}
@@ -358,9 +449,19 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300" htmlFor="tools">
-                    Herramientas
-                  </label>
+                  <FieldHint>
+                    {language === 'en' ? (
+                      <>
+                        The <Highlight>Tools</Highlight> indicate the platforms
+                        and solutions you work with regularly.
+                      </>
+                    ) : (
+                      <>
+                        Las <Highlight>Herramientas</Highlight> indican las
+                        plataformas y soluciones con las que trabajas.
+                      </>
+                    )}
+                  </FieldHint>
                   {isLoading ? (
                     <Spinner className="h-4 w-4" />
                   ) : (
@@ -371,7 +472,7 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
                       name="tools"
                       value={values.tools}
                       onBlur={handleBlur}
-                      placeholder="Seleccionar una opción"
+                      placeholder={copy.placeholder}
                       onChange={(selectedOption: any) => {
                         setFieldValue('tools', selectedOption);
                       }}
@@ -383,10 +484,10 @@ const ProfessionalsDetails = ({ userInfo, nextStep, previousStep }: any) => {
 
             <div className="flex justify-between gap-4">
               <Button type="button" outline onClick={previousStep}>
-                Anterior
+                {copy.previous}
               </Button>
               <Button type="submit" primary>
-                Finalizar
+                {copy.finish}
               </Button>
             </div>
           </Form>

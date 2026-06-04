@@ -397,6 +397,7 @@ const Profile: FunctionComponent = () => {
             'Your account, your preferences and your personal context in one place.',
           expertProfileSummary:
             'Summary of the information you completed during onboarding.',
+          editProfile: 'Edit profile',
           signOut: 'Sign out',
           personalInformation: 'Personal information',
           firstName: 'First name',
@@ -480,6 +481,7 @@ const Profile: FunctionComponent = () => {
             'Tu cuenta, tus preferencias y tu contexto personal en un solo sitio.',
           expertProfileSummary:
             'Resumen de la información que completaste en el onboarding.',
+          editProfile: 'Editar perfil',
           signOut: 'Cerrar sesión',
           personalInformation: 'Información personal',
           firstName: 'Nombre',
@@ -581,13 +583,23 @@ const Profile: FunctionComponent = () => {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
-            >
-              {copy.signOut}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/onboarding')}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                {copy.editProfile}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
+              >
+                {copy.signOut}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
