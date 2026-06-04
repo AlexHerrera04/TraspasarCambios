@@ -1083,8 +1083,8 @@ const NewContent: FunctionComponent<any> = () => {
   );
 
   return withNavbar({
-    children: userAccountInfo?.type === 'expert' ? expertContent : companyContent,
-  });
+  children: companyContent,
+});
 };
 
 export default NewContent;

@@ -5,27 +5,60 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import {
-  Card,
-  CardBody,
   Chip,
   IconButton,
   Spinner,
   Tooltip,
   Typography,
 } from '@material-tailwind/react';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { FunctionComponent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from 'src/app/core/api/apiProvider';
 import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 import withNavbar from 'src/app/core/handlers/withNavbar';
+import { Card as BrowserCard } from 'src/app/feature-browser/components/Card';
 import Button from 'src/app/ui/Button';
 
 const APP_LANGUAGE_KEY = 'appLanguage';
 
+const ActionButton = ({
+  onClick,
+  disabled,
+  variant = 'outline',
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: 'outline' | 'primary';
+  children: React.ReactNode;
+}) => {
+  const baseClassName =
+    'inline-flex h-9 items-center justify-center gap-1 rounded-lg border px-3 text-sm font-medium transition';
+  const variantClassName =
+    variant === 'primary'
+      ? 'border-primary bg-primary text-white disabled:cursor-not-allowed disabled:opacity-50'
+      : 'border-white/20 bg-transparent text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClassName} ${variantClassName}`}
+    >
+      {children}
+    </button>
+  );
+};
+
 const ContentTable: FunctionComponent<any> = (props: any) => {
   const navigate = useNavigate();
-  const { data, language } = props;
+  const { data, language, onDelete, deletingId } = props;
 
   const tableHead =
     language === 'en'
@@ -72,52 +105,31 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
 
       <tbody>
         {data.map(
-          ({ id, name, type, created_at, status }: any, index: number) => {
+          (
+            { id, name, type, created_at, status }: any,
+            index: number
+          ) => {
             const isLast = index === data.length - 1;
             const classes = isLast ? 'p-4' : 'p-4 border-b border-blue-gray-50';
 
             return (
               <tr key={id}>
                 <td className={classes}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <Typography
-                        variant="small"
-                        color="white"
-                        className="font-normal"
-                      >
-                        {id}
-                      </Typography>
-                    </div>
-                  </div>
+                  <Typography variant="small" color="white" className="font-normal">
+                    {id}
+                  </Typography>
                 </td>
 
                 <td className={classes}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <Typography
-                        variant="small"
-                        color="white"
-                        className="font-normal"
-                      >
-                        {name}
-                      </Typography>
-                    </div>
-                  </div>
+                  <Typography variant="small" color="white" className="font-normal">
+                    {name}
+                  </Typography>
                 </td>
 
                 <td className={classes}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <Typography
-                        variant="small"
-                        color="white"
-                        className="font-normal"
-                      >
-                        {type}
-                      </Typography>
-                    </div>
-                  </div>
+                  <Typography variant="small" color="white" className="font-normal">
+                    {type}
+                  </Typography>
                 </td>
 
                 <td className={classes}>
@@ -132,11 +144,7 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                 </td>
 
                 <td className={classes}>
-                  <Typography
-                    variant="small"
-                    color="white"
-                    className="font-normal"
-                  >
+                  <Typography variant="small" color="white" className="font-normal">
                     {new Date(created_at).toLocaleDateString()}
                   </Typography>
                 </td>
@@ -161,7 +169,11 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                   </Tooltip>
 
                   <Tooltip content={copy.deleteContent}>
-                    <IconButton variant="text">
+                    <IconButton
+                      variant="text"
+                      onClick={() => onDelete(id)}
+                      disabled={deletingId === id}
+                    >
                       <TrashIcon className="h-4 w-4" />
                     </IconButton>
                   </Tooltip>
@@ -175,10 +187,68 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
   );
 };
 
+const ExpertContentCards: FunctionComponent<any> = (props: any) => {
+  const navigate = useNavigate();
+  const { data, language, onDelete, deletingId } = props;
+
+  const copy =
+    language === 'en'
+      ? {
+          editContent: 'Edit',
+          deleteContent: 'Delete',
+        }
+      : {
+          editContent: 'Editar',
+          deleteContent: 'Eliminar',
+        };
+
+  return (
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-3 xl:grid-cols-4">
+      {data.map((content: any) => (
+        <div key={content.id} className="w-54">
+          <Link to={`/explorer/${content.id}`} state={{ background: location }}>
+            <BrowserCard
+              id={content.id}
+              title={content.title || content.name}
+              type={content.type}
+              public_image={content.public_image}
+              short_description={content.short_description || ''}
+              external_source={content.external_source}
+              external_source_id={content.external_source_id}
+              description={content.description || ''}
+              name={content.name}
+              rating={content.rating || ''}
+              origin={content.origin || ''}
+            />
+          </Link>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <ActionButton onClick={() => navigate(`edit/${content.id}`)}>
+              <PencilIcon className="h-3.5 w-3.5" />
+              {copy.editContent}
+            </ActionButton>
+
+            <ActionButton
+              variant="primary"
+              onClick={() => onDelete(content.id)}
+              disabled={deletingId === content.id}
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+              {copy.deleteContent}
+            </ActionButton>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const Content: FunctionComponent<any> = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userAccountInfo } = useUser();
   const language = localStorage.getItem(APP_LANGUAGE_KEY) === 'en' ? 'en' : 'es';
+  const isExpert = userAccountInfo?.type === 'expert';
 
   const copy =
     language === 'en'
@@ -189,6 +259,8 @@ const Content: FunctionComponent<any> = () => {
             'Publish relevant content, visible only to users in your company, encouraging collaboration and knowledge sharing.',
           addContent: 'Add Content',
           emptyState: "You haven't published any content.",
+          confirmDelete: 'Are you sure you want to delete this content?',
+          deleteError: 'Error deleting content.',
         }
       : {
           companyTitle: 'Comparte tu conocimiento.',
@@ -197,6 +269,8 @@ const Content: FunctionComponent<any> = () => {
             'Publica contenido relevante, visible sólo para los usuarios de tu empresa, fomentando la colaboración y el intercambio de conocimiento.',
           addContent: 'Agregar Contenido',
           emptyState: 'No has publicado ningún contenido.',
+          confirmDelete: 'Estas seguro de que quieres eliminar este contenido?',
+          deleteError: 'Error al eliminar el contenido.',
         };
 
   const { data, isFetching } = useQuery({
@@ -209,19 +283,32 @@ const Content: FunctionComponent<any> = () => {
     },
   });
 
+  const deleteContentMutation = useMutation({
+    mutationFn: async (contentId: number | string) => {
+      await api.delete(`${import.meta.env.VITE_API_URL}/contents/${contentId}/`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['content'] });
+    },
+    onError: () => {
+      alert(copy.deleteError);
+    },
+  });
+
+  const handleDelete = (contentId: number | string) => {
+    if (!window.confirm(copy.confirmDelete)) return;
+    deleteContentMutation.mutate(contentId);
+  };
+
   const pageContent = (
-    <div className="my-5 container mx-auto">
+    <div className="container mx-auto my-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="mt-10 mb-7 text-4xl font-bold">
-            {userAccountInfo?.type === 'company'
-              ? copy.companyTitle
-              : copy.expertTitle}
+          <h2 className="mb-7 mt-10 text-4xl font-bold">
+            {isExpert ? copy.expertTitle : copy.companyTitle}
           </h2>
 
-          {userAccountInfo?.type === 'company' && (
-            <p className="mb-7">{copy.description}</p>
-          )}
+          {!isExpert && <p className="mb-7">{copy.description}</p>}
         </div>
 
         <div className="flex gap-3">
@@ -232,31 +319,41 @@ const Content: FunctionComponent<any> = () => {
         </div>
       </div>
 
-      <Card className="h-full w-full bg-gray-800">
-        <CardBody className="overflow-y-auto px-0">
-          {isFetching && (
-            <div className="flex justify-center">
-              <Spinner className="h-8 w-8"></Spinner>
-            </div>
-          )}
+      {isFetching && (
+        <div className="flex justify-center py-10">
+          <Spinner className="h-8 w-8"></Spinner>
+        </div>
+      )}
 
-          {data && data.length > 0 && (
-            <ContentTable data={data} language={language} />
-          )}
+      {data && data.length > 0 && !isExpert && (
+        <div className="rounded-xl bg-gray-800">
+          <div className="overflow-y-auto px-0">
+            <ContentTable
+              data={data}
+              language={language}
+              onDelete={handleDelete}
+              deletingId={deleteContentMutation.variables}
+            />
+          </div>
+        </div>
+      )}
 
-          {data && data.length === 0 && (
-            <div className="flex justify-center">
-              <Typography
-                variant="small"
-                color="white"
-                className="font-normal"
-              >
-                {copy.emptyState}
-              </Typography>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+      {data && data.length > 0 && isExpert && (
+        <ExpertContentCards
+          data={data}
+          language={language}
+          onDelete={handleDelete}
+          deletingId={deleteContentMutation.variables}
+        />
+      )}
+
+      {data && data.length === 0 && (
+        <div className="flex justify-center py-8">
+          <Typography variant="small" color="white" className="font-normal">
+            {copy.emptyState}
+          </Typography>
+        </div>
+      )}
     </div>
   );
 

@@ -258,26 +258,27 @@ const ContentForm = ({
     }
   } else {
     initialValues = {
-      industry: [],
-      industry_id: [],
-      name: '',
-      description: '',
-      short_description: '',
-      status: false,
-      type: null,
-      is_organic: true,
-      user: 0,
-      function: [],
-      level: [],
-      capacity: [],
-      profile: [],
-      business_driver: [],
-      idiom: [],
-      price: '0',
-      rating: '0',
-      number_of_reviews: 0,
-      public_image: null,
-    };
+  industry: [],
+  industry_id: [],
+  name: '',
+  description: '',
+  short_description: '',
+  status: false,
+  type: null,
+  is_organic: true,
+  user: 0,
+  function: [],
+  level: [],
+  capacity: [],
+  profile: [],
+  business_driver: [],
+  idiom: [],
+  price: '0',
+  rating: '0',
+  number_of_reviews: 0,
+  public_image: null,
+  visible_for: visibleForValue,
+};
   }
 
   const user = useUser();
@@ -328,6 +329,14 @@ const ContentForm = ({
 
     content.append('user', user.userID ? user.userID.toString() : '');
     content.append('public_image', values.public_image);
+
+    if (showVisibleFor) {
+  const selectedVisibleFor = values.visible_for || visibleForValue;
+
+  if (selectedVisibleFor?.value) {
+    content.append('visible_for', selectedVisibleFor.value);
+  }
+}
 
     handleSubmit(content);
   };
@@ -498,7 +507,7 @@ const ContentForm = ({
                   <SelectLine
                     label={copy.visibleFor}
                     name="visible_for"
-                    value={visibleForValue}
+                    value={values.visible_for || visibleForValue}
                     options={visibleForOptions}
                     handleChange={handleChange}
                     handleBlur={handleBlur}
