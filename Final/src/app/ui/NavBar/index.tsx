@@ -16,6 +16,7 @@ import {
   PowerIcon,
   Bars2Icon,
   UserIcon,
+  UserPlusIcon,
   ClockIcon,
   BellIcon,
   SparklesIcon,
@@ -108,11 +109,13 @@ function ProfileMenu({
     language === 'en'
       ? {
           profile: 'Profile',
+          invitePartner: 'Invite Partner',
           history: 'History',
           signOut: 'Sign out',
         }
       : {
           profile: 'Perfil',
+          invitePartner: 'Invitar Partner',
           history: 'Historial',
           signOut: 'Cerrar sesión',
         };
@@ -126,6 +129,12 @@ function ProfileMenu({
 
   const goToProfile = React.useCallback(() => {
     navigate('/profile');
+    closeMenu();
+  }, [navigate]);
+
+  const goToInvitePartner = React.useCallback(() => {
+    // TODO: cambia esta ruta por la pantalla real de invitación.
+    navigate('/invite-partner');
     closeMenu();
   }, [navigate]);
 
@@ -173,6 +182,19 @@ function ProfileMenu({
             {copy.profile}
           </Typography>
         </MenuItem>
+
+        {!isExpert && (
+          <MenuItem
+            key="invite-partner"
+            onClick={goToInvitePartner}
+            className="flex items-center gap-2 rounded"
+          >
+            <UserPlusIcon className="h-4 w-4" strokeWidth={2} />
+            <Typography as="span" variant="small" className="font-normal">
+              {copy.invitePartner}
+            </Typography>
+          </MenuItem>
+        )}
 
         {!isExpert && (
           <MenuItem

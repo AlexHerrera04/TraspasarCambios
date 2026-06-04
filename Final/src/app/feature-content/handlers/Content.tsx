@@ -297,8 +297,10 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
                   <div
                     style={{
                       backgroundImage: `url(${content.public_image})`,
+                      backgroundSize: 'contain',
+                      backgroundRepeat: 'no-repeat',
                     }}
-                    className="absolute inset-0 bg-center bg-cover bg-gray-600"
+                    className="absolute inset-2 rounded-lg bg-center bg-gray-600"
                   />
                 ) : (
                   <ContentPlaceholder
@@ -465,20 +467,7 @@ const Content: FunctionComponent<any> = () => {
         </div>
       )}
 
-      {data && data.length > 0 && !isExpert && (
-        <div className="rounded-xl bg-gray-800">
-          <div className="overflow-y-auto px-0">
-            <ContentTable
-              data={data}
-              language={language}
-              onDelete={handleDelete}
-              deletingId={deleteContentMutation.variables}
-            />
-          </div>
-        </div>
-      )}
-
-      {data && data.length > 0 && isExpert && (
+      {data && data.length > 0 && (
         <ExpertContentCards
           data={data}
           language={language}

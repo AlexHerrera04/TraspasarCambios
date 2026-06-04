@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
@@ -22,6 +22,7 @@ import Table from '../../ui/Table';
 import { toast } from 'react-toastify';
 import withNavbar from 'src/app/core/handlers/withNavbar';
 import api from 'src/app/core/api/apiProvider';
+import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 import TextModal from '../components/TextModal';
 import PdfModal from '../components/PdfModal';
 import addfavoriteIcon from 'src/assets/icons/add-favorite.svg';
@@ -539,6 +540,8 @@ const OpenCardBody = ({ data }: any) => {
 const Details = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { userAccountInfo } = useUser();
+  const isExpert = userAccountInfo?.type === 'expert';
   const handleClose = useCallback(() => navigate(-1), [navigate]);
 
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -550,9 +553,35 @@ const Details = () => {
   const [pdfFile, setPdfFile] = useState<string>('');
   const [embededUrl, setEmbededUrl] = useState<string>('');
 
+  const { data: userContents, isFetching: isFetchingUserContents } = useQuery({
+    queryKey: ['expertUserContents'],
+    enabled: isExpert,
+    queryFn: async () => {
+      const response = await api.get(
+        `${import.meta.env.VITE_API_URL}/contents/user_contents/`
+      );
+      return response.data;
+    },
+  });
+
+  const hasResolvedAccess = !isExpert || userContents !== undefined;
+  const canAccessRequestedContent =
+    !isExpert ||
+    (Array.isArray(userContents) &&
+      userContents.some((content: any) => String(content.id) === String(id)));
+
+  useEffect(() => {
+    if (hasResolvedAccess && !canAccessRequestedContent) {
+      toast.error('No tienes permisos para ver este contenido.', {
+        position: toast.POSITION.BOTTOM_LEFT,
+      });
+      navigate('/content', { replace: true });
+    }
+  }, [hasResolvedAccess, canAccessRequestedContent, navigate]);
+
   const { data, isFetching } = useQuery({
     queryKey: ['getCard', id],
-    enabled: !!id,
+    enabled: !!id && hasResolvedAccess && canAccessRequestedContent,
     queryFn: async () => {
       const { data } = await api.get(
         `${import.meta.env.VITE_API_URL}/contents/${id}`
@@ -641,7 +670,14 @@ const Details = () => {
     </div>
   );
 
-  if (isFetching) return withNavbar({ children: loadingContent });
+  if (isFetching || (isExpert && isFetchingUserContents) || !hasResolvedAccess) {
+    return withNavbar({ children: loadingContent });
+  }
+
+  if (isExpert && !canAccessRequestedContent) {
+    return withNavbar({ children: loadingContent });
+  }
+
   return withNavbar({ children: detailsContent });
 };
 
