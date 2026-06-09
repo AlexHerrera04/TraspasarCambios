@@ -32,12 +32,64 @@ const LoginForm = () => {
       onSuccess: async (data) => {
         setToken(data.data.token);
       },
-      onError: (error) => {
+      onError: () => {
         toast.error('Something went wrong, please try again.', {
           position: toast.POSITION.BOTTOM_LEFT,
         });
       },
     });
+  };
+
+  const checkOnboarding = async (token: string) => {
+    const decoded = JSON.parse(atob(token.split('.')[1]));
+
+    const goToFirstPasswordChange = () => {
+      navigate('/profile/change-password?firstLogin=1&next=/onboarding', {
+        replace: true,
+      });
+    };
+
+    try {
+      const { data: user } = await api.get(
+        `${import.meta.env.VITE_API_URL}/accounts/accountinfo/${decoded.user_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const mustChangePassword =
+        user.must_change_password ||
+        user.force_password_change ||
+        user.requires_password_change ||
+        user.password_change_required;
+
+      if (mustChangePassword) {
+        goToFirstPasswordChange();
+        return;
+      }
+
+      if (user.type === 'expert') {
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+
+      if (user.is_onboarded) {
+        navigate('/home', { replace: true });
+      } else {
+        navigate('/onboarding', { replace: true });
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        goToFirstPasswordChange();
+        return;
+      }
+
+      toast.error('Something went wrong, please try again.', {
+        position: toast.POSITION.BOTTOM_LEFT,
+      });
+    }
   };
 
   useEffect(() => {
@@ -52,28 +104,6 @@ const LoginForm = () => {
       localStorage.removeItem('token');
     }
   }, [token]);
-
-  const checkOnboarding = async (token: string) => {
-    const decoded = JSON.parse(atob(token.split('.')[1]));
-    const { data: user } = await api.get(
-      `${import.meta.env.VITE_API_URL}/accounts/accountinfo/${decoded.user_id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    if (user.type === 'expert') {
-      navigate('/onboarding', { replace: true });
-      return;
-    }
-
-    if (user.is_onboarded) {
-      navigate('/home', { replace: true });
-    } else {
-      navigate('/onboarding', { replace: true });
-    }
-  };
 
   return (
     <Card
@@ -157,9 +187,6 @@ const LoginForm = () => {
                   }}
                 />
               </div>
-              {/* <div className="flex flex-wrap justify-end">
-                <Button variant="text">Forgot password</Button>
-              </div> */}
               <Button primary type="submit" disabled={isSubmitting}>
                 Entrar
               </Button>

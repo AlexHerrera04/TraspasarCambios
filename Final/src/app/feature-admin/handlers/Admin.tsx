@@ -67,7 +67,6 @@ const Admin: React.FC = () => {
             Informes: 'Search Reports...',
             'Coach Adm': 'Search Admin Coach...',
           },
-          toastUnavailable: 'Feature not available',
           toastInProgress: 'Feature in development',
           add: {
             CoachAdm: 'Open Admin Coach',
@@ -99,7 +98,6 @@ const Admin: React.FC = () => {
             Informes: 'Buscar Informes...',
             'Coach Adm': 'Buscar Coach Adm...',
           },
-          toastUnavailable: 'Funcionalidad no disponible',
           toastInProgress: 'Funcionalidad en desarrollo',
           add: {
             CoachAdm: 'Abrir Coach Adm',
@@ -222,7 +220,9 @@ const Admin: React.FC = () => {
   };
 
   const getSearchPlaceholder = () => {
-    return copy.search[activeTab as keyof typeof copy.search] || copy.search.Usuarios;
+    return (
+      copy.search[activeTab as keyof typeof copy.search] || copy.search.Usuarios
+    );
   };
 
   const getAddButtonLabel = () => {
@@ -298,7 +298,7 @@ const Admin: React.FC = () => {
             <button
               onClick={() => {
                 if (activeTab === 'Usuarios') {
-                  toast(copy.toastUnavailable);
+                  navigate('/admin/user');
                 } else if (activeTab === 'Organización') {
                   navigate('/admin/organization');
                 } else if (activeTab === 'Metas') {

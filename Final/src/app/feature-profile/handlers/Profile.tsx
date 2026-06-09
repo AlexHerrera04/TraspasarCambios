@@ -941,7 +941,9 @@ const Profile: FunctionComponent = () => {
               <InfoRow
                 label={copy.support}
                 value={copy.openHelpCenter}
-                action={() => window.open('https://openkx.ai/support', '_blank')}
+                action={() =>
+                  window.open('https://support.openkx.ai/', '_blank')
+                }
               />
               <InfoRow
                 label={copy.privacyAndSecurity}

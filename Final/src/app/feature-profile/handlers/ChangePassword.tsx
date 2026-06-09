@@ -1,8 +1,7 @@
-import { Input } from '@material-tailwind/react';
 import { FunctionComponent, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from 'src/app/core/api/apiProvider';
-import { useUser } from 'src/app/core/feature-user/provider/userProvider';
 import withNavbar from 'src/app/core/handlers/withNavbar';
 import Button from 'src/app/ui/Button';
 
@@ -10,7 +9,10 @@ const ChangePassword: FunctionComponent<any> = () => {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { userInfo, userAccountInfo } = useUser();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFirstLogin = searchParams.get('firstLogin') === '1';
+  const nextPath = searchParams.get('next') || '/onboarding';
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,6 +32,10 @@ const ChangePassword: FunctionComponent<any> = () => {
       );
 
       toast.success('Contraseña cambiada correctamente');
+
+      if (isFirstLogin) {
+        navigate(nextPath, { replace: true });
+      }
     } catch (error: any) {
       toast.error(
         'Error al cambiar la contraseña ' + error?.response?.data?.error
@@ -39,7 +45,17 @@ const ChangePassword: FunctionComponent<any> = () => {
 
   const pageContent = (
     <div className="container mx-auto my-3">
-      <h1 className="text-3xl font-bold text-white">Cambiar contraseña</h1>
+      <h1 className="text-3xl font-bold text-white">
+        {isFirstLogin ? 'Cambia tu contraseña inicial' : 'Cambiar contraseña'}
+      </h1>
+
+      {isFirstLogin && (
+        <p className="mt-2 max-w-2xl text-sm text-gray-300">
+          Has entrado con una key temporal. Para continuar, cambia tu contraseña
+          y después completarás el onboarding.
+        </p>
+      )}
+
       <div className="bg-gray-800 rounded-lg my-3 p-6 shadow-md">
         <div className="flex flex-col md:flex-row gap-5">
           <div className="flex-grow">
@@ -49,7 +65,7 @@ const ChangePassword: FunctionComponent<any> = () => {
                   htmlFor="oldPassword"
                   className="block text-gray-300 text-sm font-bold mb-2"
                 >
-                  Contraseña Actual
+                  {isFirstLogin ? 'Key temporal' : 'Contraseña Actual'}
                 </label>
                 <input
                   type="password"
@@ -60,6 +76,7 @@ const ChangePassword: FunctionComponent<any> = () => {
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-white bg-gray-800 leading-tight focus:outline-none focus:shadow-outline"
                 />
               </div>
+
               <div className="mb-4">
                 <label
                   htmlFor="newPassword"
@@ -77,8 +94,8 @@ const ChangePassword: FunctionComponent<any> = () => {
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-white bg-gray-800 leading-tight focus:outline-none focus:shadow-outline"
                 />
               </div>
+
               <div className="mb-6">
-                {/* Increased margin bottom for button separation */}
                 <label
                   htmlFor="confirmPassword"
                   className="block text-gray-300 text-sm font-bold mb-2"
@@ -95,6 +112,7 @@ const ChangePassword: FunctionComponent<any> = () => {
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-white bg-gray-800 leading-tight focus:outline-none focus:shadow-outline"
                 />
               </div>
+
               <Button type="submit" variant="primary">
                 Cambiar contraseña
               </Button>
@@ -104,6 +122,7 @@ const ChangePassword: FunctionComponent<any> = () => {
       </div>
     </div>
   );
+
   return withNavbar({ children: pageContent });
 };
 

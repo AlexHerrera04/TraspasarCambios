@@ -161,6 +161,7 @@ const Capacities = (props: any) => {
           scope: 'Scope',
           scopeAll: 'All',
           myKeyCompetencies: 'My key competencies',
+          myComplementaryCompetencies: 'My complementary competencies',
           benchmark: 'Benchmark',
           noData: 'No data to display with the current filters',
           unlockPotential:
@@ -183,6 +184,7 @@ const Capacities = (props: any) => {
           scope: 'Alcance',
           scopeAll: 'Todas',
           myKeyCompetencies: 'Mis competencias clave',
+          myComplementaryCompetencies: 'Mis competencias complementarias',
           benchmark: 'Benchmark',
           noData: 'No hay datos para mostrar con los filtros actuales',
           unlockPotential:
@@ -202,7 +204,8 @@ const Capacities = (props: any) => {
   const [selectedRoles, setSelectedRoles] = React.useState<any>([]);
   const [selectedCapacities, setSelectedCapacities] = React.useState<any>([]);
   const [filteredCapacities, setFilteredCapacities] = React.useState<any>([]);
-  const [selectedCapacityGroup, setSelectedCapacityGroup] = React.useState<any>([]);
+  const [selectedCapacityGroup, setSelectedCapacityGroup] =
+    React.useState<any>([]);
   const [selectedScope, setSelectedScope] = React.useState<any>({
     label: copy.scopeAll,
     value: 'all',
@@ -402,10 +405,19 @@ const Capacities = (props: any) => {
     }
 
     let filtered = capacities;
+    const userKeyCompetencies = userAccountInfo?.capacity || [];
 
     if (filters.scope === 'my_competencies') {
       filtered = filtered.filter((capacity: any) =>
-        userAccountInfo?.capacity.includes(capacity.capacity)
+        userKeyCompetencies.includes(capacity.capacity)
+      );
+    }
+
+    if (filters.scope === 'my_complementary_competencies') {
+      filtered = filtered.filter(
+        (capacity: any) =>
+          !userKeyCompetencies.includes(capacity.capacity) &&
+          capacity.value > VALUE_TO_FILTER_CAPACITIES
       );
     }
 
@@ -451,7 +463,9 @@ const Capacities = (props: any) => {
 
     return (
       <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4 mt-20">{copy.myKeyCompetencies}</h2>
+        <h2 className="text-2xl font-bold mb-4 mt-20">
+          {copy.myKeyCompetencies}
+        </h2>
         <div className="bg-white/5 rounded-2xl p-8 w-full">
           <div className="flex flex-wrap gap-3 justify-center items-center">
             {[...userCapacities]
@@ -468,7 +482,9 @@ const Capacities = (props: any) => {
                       pointer-events-none
                     `}
                   >
-                    <div className="font-semibold mb-2">{copy.competencies}</div>
+                    <div className="font-semibold mb-2">
+                      {copy.competencies}
+                    </div>
                     <ul className="list-disc list-inside">
                       {layerZeroCapacitiesQuery.data
                         .filter(
@@ -547,6 +563,10 @@ const Capacities = (props: any) => {
                       label: copy.myKeyCompetencies,
                       value: 'my_competencies',
                     },
+                    {
+                      label: copy.myComplementaryCompetencies,
+                      value: 'my_complementary_competencies',
+                    },
                   ]}
                 ></SelectInput>
               </div>
@@ -572,15 +592,15 @@ const Capacities = (props: any) => {
               </div>
             </div>
             <div className="h-[600px] flex-grow flex justify-center">
-              {isQuizCompleted && data && (
-                data.labels.length === 0 ? (
+              {isQuizCompleted &&
+                data &&
+                (data.labels.length === 0 ? (
                   <div className="h-[600px] flex items-center justify-center text-gray-400">
                     {copy.noData}
                   </div>
                 ) : (
                   <Radar data={data} options={options} />
-                )
-              )}
+                ))}
             </div>
 
             <div className="p-5"></div>
@@ -593,9 +613,7 @@ const Capacities = (props: any) => {
         </div>
       )}
       <div className="flex items-center justify-center gap-4 mt-8">
-        <p className="text-base">
-          {copy.assessmentPrompt}
-        </p>
+        <p className="text-base">{copy.assessmentPrompt}</p>
         <Button
           type="submit"
           chevron

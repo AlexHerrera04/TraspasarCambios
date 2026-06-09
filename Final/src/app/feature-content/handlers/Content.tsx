@@ -61,7 +61,9 @@ const ActionButton = ({
 
 const getLocalizedDate = (value: string, language: 'es' | 'en') => {
   if (!value) return '';
-  return new Date(value).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES');
+  return new Date(value).toLocaleDateString(
+    language === 'en' ? 'en-US' : 'es-ES'
+  );
 };
 
 const getTypeLabel = (value: string) => {
@@ -107,13 +109,7 @@ const StatusBadge = ({
   );
 };
 
-const MetaItem = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
+const MetaItem = ({ label, value }: { label: string; value: string }) => (
   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
       {label}
@@ -171,29 +167,38 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
 
       <tbody>
         {data.map(
-          (
-            { id, name, type, created_at, status }: any,
-            index: number
-          ) => {
+          ({ id, name, type, created_at, status }: any, index: number) => {
             const isLast = index === data.length - 1;
             const classes = isLast ? 'p-4' : 'border-b border-blue-gray-50 p-4';
 
             return (
               <tr key={id}>
                 <td className={classes}>
-                  <Typography variant="small" color="white" className="font-normal">
+                  <Typography
+                    variant="small"
+                    color="white"
+                    className="font-normal"
+                  >
                     {id}
                   </Typography>
                 </td>
 
                 <td className={classes}>
-                  <Typography variant="small" color="white" className="font-normal">
+                  <Typography
+                    variant="small"
+                    color="white"
+                    className="font-normal"
+                  >
                     {name}
                   </Typography>
                 </td>
 
                 <td className={classes}>
-                  <Typography variant="small" color="white" className="font-normal">
+                  <Typography
+                    variant="small"
+                    color="white"
+                    className="font-normal"
+                  >
                     {type}
                   </Typography>
                 </td>
@@ -210,7 +215,11 @@ const ContentTable: FunctionComponent<any> = (props: any) => {
                 </td>
 
                 <td className={classes}>
-                  <Typography variant="small" color="white" className="font-normal">
+                  <Typography
+                    variant="small"
+                    color="white"
+                    className="font-normal"
+                  >
                     {getLocalizedDate(created_at, language)}
                   </Typography>
                 </td>
@@ -262,6 +271,7 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
     language === 'en'
       ? {
           createdLabel: 'Created',
+          viewsLabel: 'Views',
           ratingLabel: 'Rating',
           viewContent: 'View details',
           editContent: 'Edit',
@@ -269,6 +279,7 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
         }
       : {
           createdLabel: 'Creado',
+          viewsLabel: 'Reviews',
           ratingLabel: 'Valoración',
           viewContent: 'Ver detalle',
           editContent: 'Editar',
@@ -281,6 +292,12 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
         const hasImage = !!content.public_image;
         const contentName = content.name || content.title || '-';
         const contentType = getTypeLabel(content.type);
+        const contentViews =
+          content.number_of_reviews ??
+          content.reviews ??
+          content.review_count ??
+          content.reviews_count ??
+          0;
 
         return (
           <div
@@ -292,20 +309,18 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
               state={{ background: location }}
               className="block"
             >
-              <div className="relative flex h-48 flex-col items-center">
+              <div className="relative flex h-48 flex-col items-center rounded-lg shadow-md shadow-blue-gray-500/10">
                 {hasImage ? (
                   <div
                     style={{
                       backgroundImage: `url(${content.public_image})`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
                     }}
-                    className="absolute inset-2 rounded-lg bg-center bg-gray-600"
+                    className="absolute inset-0 rounded-lg bg-center bg-cover bg-gray-600"
                   />
                 ) : (
                   <ContentPlaceholder
                     type={content.type}
-                    className="absolute inset-0"
+                    className="absolute inset-0 rounded-lg"
                   />
                 )}
 
@@ -328,7 +343,9 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
                   state={{ background: location }}
                   className="min-w-0 flex-1"
                 >
-                  <h3 className="text-base font-bold text-white">{contentName}</h3>
+                  <h3 className="text-base font-bold text-white">
+                    {contentName}
+                  </h3>
                 </Link>
 
                 <StatusBadge status={content.status} language={language} />
@@ -338,11 +355,12 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
                 {content.short_description || content.description || '-'}
               </p>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <MetaItem
                   label={copy.createdLabel}
                   value={getLocalizedDate(content.created_at, language)}
                 />
+                <MetaItem label={copy.viewsLabel} value={String(contentViews)} />
                 <MetaItem
                   label={copy.ratingLabel}
                   value={content.rating || '-'}
@@ -447,7 +465,9 @@ const Content: FunctionComponent<any> = () => {
           </h2>
 
           {isExpert ? (
-            <p className="mb-7 max-w-3xl text-white/70">{copy.expertDescription}</p>
+            <p className="mb-7 max-w-3xl text-white/70">
+              {copy.expertDescription}
+            </p>
           ) : (
             <p className="mb-7">{copy.description}</p>
           )}
