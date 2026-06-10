@@ -103,9 +103,6 @@ type AdminScopeUser = {
   is_manager?: boolean;
 };
 
-const COACH_API_URL =
-  import.meta.env.VITE_COACH_API_URL || 'http://localhost:3001';
-
 const FREE_CHAT_STORAGE_KEY = 'desktopCoachFreeMessages';
 const CLOSED_CHAT_STORAGE_KEY = 'desktopCoachClosedMessages';
 const PERSONALITY_KEY = 'desktopCoachPersonality';
@@ -1166,23 +1163,14 @@ function formatUserValueLabel(
 }
 
 async function askCoach(input: string, instructions: string) {
-  const response = await fetch(`${COACH_API_URL}/api/coach`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const { data } = await api.post(
+    `${import.meta.env.VITE_API_URL}/chatbot/coach`,
+    {
       input,
       instructions,
       maxTokens: 900,
-    }),
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(data?.error || 'No se ha podido obtener respuesta del coach.');
-  }
+    }
+  );
 
   if (!data?.text?.trim()) {
     throw new Error('Respuesta vacía del coach.');

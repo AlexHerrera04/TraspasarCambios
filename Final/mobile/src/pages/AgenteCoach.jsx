@@ -34,7 +34,7 @@ async function getRadarData() {
 async function askClaude(prompt, maxTokens = 500) {
   try {
 
-    const res = await fetch("/api/coach", {
+    const res = await fetch("/chatbot/coach", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, maxTokens })
