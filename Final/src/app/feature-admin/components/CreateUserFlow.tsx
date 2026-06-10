@@ -1,13 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { Spinner, Typography } from '@material-tailwind/react';
+import { PencilIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import api from 'src/app/core/api/apiProvider';
 import Button from 'src/app/ui/Button';
 import withNavbar from '../../core/handlers/withNavbar';
 import { useOrganizations } from '../services/organizationService';
+import {
+  buildInvitationMailto,
+  downloadInvitationsCsv,
+  StoredUserInvitation,
+  upsertUserInvitations,
+} from '../utils/userInvitations';
 
 type AddMode = 'select' | 'individual' | 'bulk';
+type BulkKeyMode = 'same' | 'random';
+type FlowStep =
+  | 'select'
+  | 'individual-form'
+  | 'bulk-upload'
+  | 'bulk-keys'
+  | 'actions';
 
 type UserDraft = {
   root_organization_level: string;
@@ -16,8 +30,18 @@ type UserDraft = {
   last_name: string;
   company_username: string;
   key: string;
-  expiration_date: string;
 };
+
+type CreatedUser = Pick<
+  StoredUserInvitation,
+  | 'email'
+  | 'username'
+  | 'key'
+  | 'first_name'
+  | 'last_name'
+  | 'organization'
+  | 'organization_id'
+>;
 
 const randomCharacters =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -48,7 +72,6 @@ const emptyUserDraft = (): UserDraft => ({
   last_name: '',
   company_username: '',
   key: generateRandomKey(),
-  expiration_date: '',
 });
 
 function parseCsvLine(line: string) {
@@ -109,19 +132,17 @@ function parseUsersCsv(csvText: string): UserDraft[] {
     }, {});
 
     return {
-      root_organization_level:
-        row.root_organization_level || row.organization || '',
+      root_organization_level: '',
       email: row.email || row.mail || '',
-      first_name: row.first_name || row.nombre || '',
-      last_name: row.last_name || row.apellido || '',
+      first_name: row.first_name || row.nombre || row.name || '',
+      last_name: row.last_name || row.apellido || row.surname || '',
       company_username:
         row.company_username ||
         row.username ||
+        row.nombre_usuario ||
         row.nombre_usuario_empresa ||
         '',
-      key: row.key || generateRandomKey(),
-      expiration_date:
-        row.expiration_date || row.fecha_vencimiento || row.vencimiento || '',
+      key: '',
     };
   });
 }
@@ -137,14 +158,21 @@ function buildUsername(user: UserDraft) {
   return `${emailPrefix}_${suffix}`.replace(/[^a-zA-Z0-9_.-]/g, '_');
 }
 
-function validateUser(user: UserDraft) {
-  if (!user.root_organization_level) return 'Falta root organization level';
-  if (!user.email) return 'Falta mail';
-  if (!user.first_name) return 'Falta nombre';
-  if (!user.last_name) return 'Falta apellido';
-  if (!user.key) return 'Falta key';
+function validateIndividualUser(user: UserDraft) {
+  if (!user.root_organization_level) return 'Falta área especializada';
+  if (!user.first_name.trim()) return 'Falta nombre';
+  if (!user.last_name.trim()) return 'Falta apellido';
+  if (!user.email.trim()) return 'Falta mail';
+  if (!user.key.trim()) return 'Falta key';
   if (user.key.length !== 15) return 'La key debe tener 15 caracteres';
-  if (!user.expiration_date) return 'Falta fecha de vencimiento';
+
+  return '';
+}
+
+function validateBulkUser(user: UserDraft) {
+  if (!user.first_name.trim()) return 'Falta nombre';
+  if (!user.last_name.trim()) return 'Falta apellido';
+  if (!user.email.trim()) return 'Falta mail';
 
   return '';
 }
@@ -174,9 +202,26 @@ const CreateUserFlow: React.FC = () => {
     useOrganizations();
 
   const [mode, setMode] = useState<AddMode>('select');
+  const [step, setStep] = useState<FlowStep>('select');
   const [userDraft, setUserDraft] = useState<UserDraft>(emptyUserDraft);
   const [bulkUsers, setBulkUsers] = useState<UserDraft[]>([]);
+  const [bulkKeyMode, setBulkKeyMode] = useState<BulkKeyMode>('random');
+  const [sharedKey, setSharedKey] = useState(generateRandomKey());
+  const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editingCreatedUserIndex, setEditingCreatedUserIndex] = useState<
+    number | null
+  >(null);
+
+  const [editingCreatedUser, setEditingCreatedUser] = useState({
+    first_name: '',
+    last_name: '',
+    username: '',
+    email: '',
+    key: '',
+    organization: '',
+  });
 
   const organizationOptions = useMemo(
     () =>
@@ -189,6 +234,27 @@ const CreateUserFlow: React.FC = () => {
     [organizations]
   );
 
+  const createdInvitations = useMemo(
+    () =>
+      createdUsers.map((user) => ({
+        ...user,
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })),
+    [createdUsers]
+  );
+
+  const isBulkResult = createdUsers.length > 1;
+
+  const getOrganizationLabel = (organizationId: string) => {
+    return (
+      organizationOptions.find(
+        (organization) => organization.value === organizationId
+      )?.label || ''
+    );
+  };
+
   const updateUserDraft = (field: keyof UserDraft, value: string) => {
     setUserDraft((current) => ({
       ...current,
@@ -196,10 +262,20 @@ const CreateUserFlow: React.FC = () => {
     }));
   };
 
-  const resetForm = () => {
-    setMode('select');
-    setUserDraft(emptyUserDraft());
-    setBulkUsers([]);
+  const goToMode = (nextMode: AddMode) => {
+    setMode(nextMode);
+
+    if (nextMode === 'individual') {
+      setStep('individual-form');
+      return;
+    }
+
+    if (nextMode === 'bulk') {
+      setStep('bulk-upload');
+      return;
+    }
+
+    setStep('select');
   };
 
   const handleCsvUpload = async (
@@ -217,83 +293,240 @@ const CreateUserFlow: React.FC = () => {
       return;
     }
 
+    const invalidUser = parsedUsers.find((user) => validateBulkUser(user));
+
+    if (invalidUser) {
+      toast.error(
+        `${validateBulkUser(invalidUser)}: ${
+          invalidUser.email || 'usuario sin mail'
+        }`
+      );
+      return;
+    }
+
     setBulkUsers(parsedUsers);
   };
 
-  const addUser = async (user: UserDraft) => {
-    const validationError = validateUser(user);
-
-    if (validationError) {
-      throw new Error(`${validationError}: ${user.email || 'usuario sin mail'}`);
-    }
+  const createUser = async (user: UserDraft): Promise<CreatedUser> => {
+    const username = buildUsername(user);
 
     const payload = {
-      username: buildUsername(user),
+      username,
       email: user.email.trim(),
       password: user.key,
       first_name: user.first_name.trim(),
       last_name: user.last_name.trim(),
-      organization: user.root_organization_level,
-      expiration_date: user.expiration_date,
-      must_change_password: true,
-      force_password_change: true,
-      temporary_password: true,
     };
 
-    const response = await api.post(
-      `${import.meta.env.VITE_API_URL}/accounts/create/`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    await api.post(`${import.meta.env.VITE_API_URL}/accounts/create/`, payload, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-    return response.data;
+    return {
+      username,
+      email: user.email.trim(),
+      key: user.key,
+      first_name: user.first_name.trim(),
+      last_name: user.last_name.trim(),
+      organization_id: user.root_organization_level,
+      organization: getOrganizationLabel(user.root_organization_level),
+    };
   };
 
-  const handleSubmit = async () => {
+  const handleIndividualNext = async () => {
+    const validationError = validateIndividualUser(userDraft);
+
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      if (mode === 'individual') {
-        await addUser(userDraft);
-        toast.success('Usuario agregado correctamente');
-      }
+      const createdUser = await createUser(userDraft);
+      setCreatedUsers([createdUser]);
+      upsertUserInvitations([createdUser], 'pending');
+      setStep('actions');
 
-      if (mode === 'bulk') {
-        if (!bulkUsers.length) {
-          toast.error('Importa un CSV antes de continuar');
-          return;
-        }
-
-        for (const user of bulkUsers) {
-          await addUser(user);
-        }
-
-        toast.success(`${bulkUsers.length} usuarios agregados correctamente`);
-      }
-
-      resetForm();
-      navigate('/admin');
+      toast.success('Usuario creado correctamente');
     } catch (error: any) {
       toast.error(
         error?.response?.data?.detail ||
           error?.response?.data?.message ||
           error?.message ||
-          'Error al agregar usuarios'
+          'Error al crear usuario'
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleBulkUploadNext = () => {
+    if (!bulkUsers.length) {
+      toast.error('Importa un CSV antes de continuar');
+      return;
+    }
+
+    setStep('bulk-keys');
+  };
+
+  const handleBulkCreateNext = async () => {
+    if (!bulkUsers.length) {
+      toast.error('Importa un CSV antes de continuar');
+      return;
+    }
+
+    const keyToUse = sharedKey.trim();
+
+    if (bulkKeyMode === 'same' && keyToUse.length !== 15) {
+      toast.error('La key compartida debe tener 15 caracteres');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const usersWithKeys = bulkUsers.map((user) => ({
+        ...user,
+        key: bulkKeyMode === 'same' ? keyToUse : generateRandomKey(),
+      }));
+
+      const createdBulkUsers: CreatedUser[] = [];
+
+      for (const user of usersWithKeys) {
+        const createdUser = await createUser(user);
+        createdBulkUsers.push(createdUser);
+      }
+
+      setCreatedUsers(createdBulkUsers);
+      upsertUserInvitations(createdBulkUsers, 'pending');
+      setStep('actions');
+
+      toast.success(`${createdBulkUsers.length} usuarios creados correctamente`);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Error al crear usuarios'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadData = () => {
+    downloadInvitationsCsv(createdUsers);
+    toast.success('Datos descargados correctamente');
+  };
+
+  const handleSendInvitations = () => {
+    if (!createdUsers.length) return;
+
+    const invitations = createdUsers.map((user) => ({
+      ...user,
+      status: 'pending' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+
+    upsertUserInvitations(createdUsers, 'invited');
+
+    if (invitations.length === 1) {
+      window.location.href = buildInvitationMailto(invitations[0]);
+      toast.success('Abriendo cliente de correo');
+      return;
+    }
+
+    invitations.forEach((invitation, index) => {
+      window.setTimeout(() => {
+        window.open(buildInvitationMailto(invitation), '_blank');
+      }, index * 250);
+    });
+
+    toast.success('Abriendo cliente de correo para los usuarios');
+  };
+
+  const handleInviteLater = () => {
+    upsertUserInvitations(createdUsers, 'pending');
+    toast.success('Usuarios guardados como pendientes');
+    navigate('/admin');
+  };
+
+  const openCreatedUserEditor = (index: number) => {
+    const user = createdUsers[index];
+
+    if (!user) return;
+
+    setEditingCreatedUserIndex(index);
+    setEditingCreatedUser({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      username: user.username || '',
+      email: user.email || '',
+      key: user.key || '',
+      organization: user.organization || '',
+    });
+  };
+
+  const saveCreatedUserEdition = () => {
+    if (editingCreatedUserIndex === null) return;
+
+    if (!editingCreatedUser.first_name.trim()) {
+      toast.error('Falta nombre');
+      return;
+    }
+
+    if (!editingCreatedUser.last_name.trim()) {
+      toast.error('Falta apellido');
+      return;
+    }
+
+    if (!editingCreatedUser.email.trim()) {
+      toast.error('Falta mail');
+      return;
+    }
+
+    if (!editingCreatedUser.username.trim()) {
+      toast.error('Falta usuario');
+      return;
+    }
+
+    if (!editingCreatedUser.key.trim()) {
+      toast.error('Falta key');
+      return;
+    }
+
+    const nextCreatedUsers = createdUsers.map((user, index) =>
+      index === editingCreatedUserIndex
+        ? {
+            ...user,
+            first_name: editingCreatedUser.first_name.trim(),
+            last_name: editingCreatedUser.last_name.trim(),
+            username: editingCreatedUser.username.trim(),
+            email: editingCreatedUser.email.trim(),
+            key: editingCreatedUser.key.trim(),
+            organization: editingCreatedUser.organization.trim(),
+          }
+        : user
+    );
+
+    setCreatedUsers(nextCreatedUsers);
+    upsertUserInvitations(nextCreatedUsers, 'pending');
+
+    setEditingCreatedUserIndex(null);
+
+    toast.success('Datos actualizados');
+  };
+
   const downloadCsvTemplate = () => {
     const content = [
-      'root_organization_level,email,first_name,last_name,company_username,key,expiration_date',
-      '1,persona@empresa.com,Nombre,Apellido,usuario.empresa,ABC123DEF456GHI,2026-12-31',
+      'nombre,apellido,mail',
+      'Nombre,Apellido,persona@empresa.com',
     ].join('\n');
 
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
@@ -307,18 +540,228 @@ const CreateUserFlow: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const renderActionButtons = () => (
+    <div className="flex h-full flex-col justify-between gap-6">
+      <div className="flex flex-col gap-3">
+        <Button type="button" primary onClick={handleDownloadData}>
+          Descargar datos
+        </Button>
+
+        <Button type="button" primary onClick={handleSendInvitations}>
+          Enviar mail
+        </Button>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="button" outline onClick={handleInviteLater}>
+          Invitar más tarde
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderIndividualSummary = () => {
+    const user = createdUsers[0];
+
+    if (!user) return null;
+
+    return (
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="rounded-3xl border border-white/10 bg-[#111827] p-6">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-300">
+                Usuario creado
+              </p>
+              <Typography variant="h3" color="white" className="mt-2">
+                {user.first_name} {user.last_name}
+              </Typography>
+              <p className="mt-2 text-sm text-white/60">
+                Revisa los datos antes de descargarlos, enviarlos por mail o
+                dejar la invitación para más tarde.
+              </p>
+            </div>
+
+            <div className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300">
+              Pendiente
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Nombre
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {user.first_name}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Apellido
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {user.last_name}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Usuario
+              </p>
+              <p className="mt-1 break-all text-lg font-semibold text-white">
+                {user.username}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Mail
+              </p>
+              <p className="mt-1 break-all text-lg font-semibold text-white">
+                {user.email}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Key
+              </p>
+              <p className="mt-1 font-mono text-lg font-semibold text-primary-200">
+                {user.key}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Área especializada
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {user.organization || '-'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-h-[320px] flex-col rounded-3xl border border-primary-500/20 bg-primary-900/10 p-6">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <Typography variant="h5" color="white">
+                Entrega de credenciales
+              </Typography>
+              <p className="mt-3 text-sm leading-6 text-white/65">
+                Puedes descargar los datos, enviar el mail o dejar al usuario en
+                pendientes para invitarlo más tarde.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openCreatedUserEditor(0)}
+              className="rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10"
+              title="Editar datos"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex-1">{renderActionButtons()}</div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBulkSummary = () => (
+    <div className="rounded-3xl border border-white/10 bg-[#111827] p-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-300">
+            Vista previa del CSV
+          </p>
+          <Typography variant="h3" color="white" className="mt-2">
+            {createdUsers.length} usuarios creados
+          </Typography>
+          <p className="mt-2 text-sm text-white/60">
+            Revisa los usuarios antes de descargar datos, enviar mails o
+            dejarlos como pendientes.
+          </p>
+        </div>
+
+        <div className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300">
+          Pendientes
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-2xl border border-primary-500/20 bg-primary-900/10 p-5">
+        <Typography variant="h5" color="white">
+          Entrega de credenciales
+        </Typography>
+        <p className="mt-2 text-sm leading-6 text-white/65">
+          Puedes descargar todos los datos, abrir mails pre-rellenados para los
+          usuarios o guardarlos como pendientes para invitarlos más tarde.
+        </p>
+
+        <div className="mt-5">{renderActionButtons()}</div>
+      </div>
+
+      <div className="max-h-[420px] overflow-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 bg-[#0f172a]">
+            <tr className="border-b border-white/10 text-white/60">
+              <th className="p-3">Nombre</th>
+              <th className="p-3">Apellido</th>
+              <th className="p-3">Usuario</th>
+              <th className="p-3">Mail</th>
+              <th className="p-3">Key</th>
+              <th className="p-3">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {createdUsers.map((user, index) => (
+              <tr key={user.email} className="border-b border-white/5">
+                <td className="p-3 text-white">{user.first_name}</td>
+                <td className="p-3 text-white">{user.last_name}</td>
+                <td className="p-3 text-white">{user.username}</td>
+                <td className="p-3 text-white">{user.email}</td>
+                <td className="p-3 font-mono text-primary-200">{user.key}</td>
+                <td className="p-3">
+                  <button
+                    type="button"
+                    onClick={() => openCreatedUserEditor(index)}
+                    className="rounded-lg border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10"
+                    title="Editar datos"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderActionsStep = () => (
+    <div className="rounded-3xl border border-white/10 bg-[#1e2633] p-8 shadow-xl shadow-black/10">
+      <div className="mb-8">
+      </div>
+
+      {isBulkResult ? renderBulkSummary() : renderIndividualSummary()}
+    </div>
+  );
+
   const content = (
     <div className="min-h-screen bg-[#0f172a] px-4 py-8 text-white">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 rounded-3xl border border-white/10 bg-[#1e2633]/70 p-8 shadow-xl shadow-black/10">
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-primary-400">
-              </p>
               <h1 className="text-4xl font-bold">Agregar usuario</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-300">
-                Gestiona altas individuales o importa varios usuarios mediante
-                CSV, asignando acceso temporal con key y fecha de vencimiento.
+                Gestiona altas individuales o masivas y decide si
+                descargar las credenciales o enviarlas por mail.
               </p>
             </div>
 
@@ -328,11 +771,11 @@ const CreateUserFlow: React.FC = () => {
           </div>
         </div>
 
-        {mode === 'select' && (
+        {step === 'select' && (
           <div className="grid gap-6 md:grid-cols-2">
             <button
               type="button"
-              onClick={() => setMode('individual')}
+              onClick={() => goToMode('individual')}
               className={cardClassName}
             >
               <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-900/40 text-2xl">
@@ -342,7 +785,7 @@ const CreateUserFlow: React.FC = () => {
                 Usuario individual
               </Typography>
               <p className="mt-3 text-sm leading-6 text-white/65">
-                Agrega una persona de forma manual y genera su key de acceso.
+                Agrega una persona manualmente y genera su key de acceso.
               </p>
               <div className="mt-8 text-sm font-semibold text-primary-300 transition group-hover:text-primary-200">
                 Seleccionar modo
@@ -351,7 +794,7 @@ const CreateUserFlow: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setMode('bulk')}
+              onClick={() => goToMode('bulk')}
               className={cardClassName}
             >
               <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-900/40 text-2xl">
@@ -361,7 +804,7 @@ const CreateUserFlow: React.FC = () => {
                 Carga masiva
               </Typography>
               <p className="mt-3 text-sm leading-6 text-white/65">
-                Importa un archivo con todos los usuarios que quieras agregar.
+                Importa un CSV con nombre, apellido y mail.
               </p>
               <div className="mt-8 text-sm font-semibold text-primary-300 transition group-hover:text-primary-200">
                 Seleccionar modo
@@ -370,7 +813,7 @@ const CreateUserFlow: React.FC = () => {
           </div>
         )}
 
-        {mode === 'individual' && (
+        {step === 'individual-form' && mode === 'individual' && (
           <div className="rounded-3xl border border-white/10 bg-[#1e2633] p-8 shadow-xl shadow-black/10">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -378,22 +821,23 @@ const CreateUserFlow: React.FC = () => {
                   Usuario individual
                 </Typography>
                 <p className="mt-2 text-sm text-white/60">
-                  Completa la información necesaria para dar acceso a un nuevo usuario.
+                  Completa los datos básicos para crear la cuenta.
                 </p>
               </div>
 
-              <Button type="button" outline onClick={() => setMode('select')}>
+              <Button type="button" outline onClick={() => goToMode('select')}>
                 Cambiar modo
               </Button>
             </div>
 
-            {isLoadingOrganizations ? (
-              <div className="flex justify-center py-12">
-                <Spinner className="h-8 w-8" />
-              </div>
-            ) : (
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Root organization level">
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Área especializada">
+                {isLoadingOrganizations ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <Spinner className="h-4 w-4" />
+                    Cargando áreas...
+                  </div>
+                ) : (
                   <select
                     value={userDraft.root_organization_level}
                     onChange={(event) =>
@@ -404,92 +848,81 @@ const CreateUserFlow: React.FC = () => {
                     }
                     className={inputClassName}
                   >
-                    <option value="">Selecciona un root organization level</option>
+                    <option value="">Selecciona un área especializada</option>
                     {organizationOptions.map((organization) => (
                       <option key={organization.value} value={organization.value}>
                         {organization.label}
                       </option>
                     ))}
                   </select>
-                </Field>
+                )}
+              </Field>
 
-                <Field label="Mail">
-                  <input
-                    type="email"
-                    value={userDraft.email}
-                    onChange={(event) =>
-                      updateUserDraft('email', event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
+              <Field label="Nombre">
+                <input
+                  type="text"
+                  value={userDraft.first_name}
+                  onChange={(event) =>
+                    updateUserDraft('first_name', event.target.value)
+                  }
+                  className={inputClassName}
+                />
+              </Field>
 
-                <Field label="Nombre">
+              <Field label="Apellido">
+                <input
+                  type="text"
+                  value={userDraft.last_name}
+                  onChange={(event) =>
+                    updateUserDraft('last_name', event.target.value)
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+
+              <Field label="Nombre usuario opcional">
+                <input
+                  type="text"
+                  value={userDraft.company_username}
+                  onChange={(event) =>
+                    updateUserDraft('company_username', event.target.value)
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+
+              <Field label="Mail">
+                <input
+                  type="email"
+                  value={userDraft.email}
+                  onChange={(event) =>
+                    updateUserDraft('email', event.target.value)
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+
+              <Field label="Key">
+                <div className="flex gap-2">
                   <input
                     type="text"
-                    value={userDraft.first_name}
+                    value={userDraft.key}
                     onChange={(event) =>
-                      updateUserDraft('first_name', event.target.value)
+                      updateUserDraft('key', event.target.value)
                     }
                     className={inputClassName}
+                    maxLength={15}
                   />
-                </Field>
-
-                <Field label="Apellido">
-                  <input
-                    type="text"
-                    value={userDraft.last_name}
-                    onChange={(event) =>
-                      updateUserDraft('last_name', event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-
-                <Field label="Nombre de usuario de empresa (opcional)">
-                  <input
-                    type="text"
-                    value={userDraft.company_username}
-                    onChange={(event) =>
-                      updateUserDraft('company_username', event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-
-                <Field label="Key">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={userDraft.key}
-                      onChange={(event) =>
-                        updateUserDraft('key', event.target.value)
-                      }
-                      className={inputClassName}
-                      maxLength={15}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => updateUserDraft('key', generateRandomKey())}
-                      className="rounded-xl bg-primary-900 px-4 text-sm font-semibold text-white transition hover:bg-primary-800"
-                    >
-                      Random
-                    </button>
-                  </div>
-                </Field>
-
-                <Field label="Fecha de vencimiento">
-                  <input
-                    type="date"
-                    value={userDraft.expiration_date}
-                    onChange={(event) =>
-                      updateUserDraft('expiration_date', event.target.value)
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => updateUserDraft('key', generateRandomKey())}
+                    className="rounded-xl bg-primary-900 px-4 text-sm font-semibold text-white transition hover:bg-primary-800"
+                  >
+                    Random
+                  </button>
+                </div>
+              </Field>
+            </div>
 
             <div className="mt-8 flex justify-end gap-3">
               <Button type="button" outline onClick={() => navigate('/admin')}>
@@ -499,17 +932,17 @@ const CreateUserFlow: React.FC = () => {
               <Button
                 type="button"
                 primary
-                onClick={handleSubmit}
+                onClick={handleIndividualNext}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                Agregar usuario
+                Siguiente
               </Button>
             </div>
           </div>
         )}
 
-        {mode === 'bulk' && (
+        {step === 'bulk-upload' && mode === 'bulk' && (
           <div className="rounded-3xl border border-white/10 bg-[#1e2633] p-8 shadow-xl shadow-black/10">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -517,11 +950,11 @@ const CreateUserFlow: React.FC = () => {
                   Carga masiva
                 </Typography>
                 <p className="mt-2 text-sm text-white/60">
-                  Importa un CSV con todos los usuarios que quieras agregar.
+                  Importa un CSV con nombre, apellido y mail.
                 </p>
               </div>
 
-              <Button type="button" outline onClick={() => setMode('select')}>
+              <Button type="button" outline onClick={() => goToMode('select')}>
                 Cambiar modo
               </Button>
             </div>
@@ -532,12 +965,7 @@ const CreateUserFlow: React.FC = () => {
                   Formato CSV requerido
                 </Typography>
                 <p className="mt-2 text-sm text-white/65">
-                  Cabeceras: root_organization_level, email, first_name,
-                  last_name, company_username, key, expiration_date.
-                </p>
-                <p className="mt-1 text-sm text-white/65">
-                  Si no incluyes key, se generará automáticamente una key de 15
-                  caracteres.
+                  Cabeceras: nombre, apellido, mail.
                 </p>
 
                 <button
@@ -568,21 +996,17 @@ const CreateUserFlow: React.FC = () => {
                     <table className="w-full text-left text-sm">
                       <thead>
                         <tr className="border-b border-white/10 text-white/60">
-                          <th className="p-2">Mail</th>
                           <th className="p-2">Nombre</th>
                           <th className="p-2">Apellido</th>
-                          <th className="p-2">Key</th>
-                          <th className="p-2">Vencimiento</th>
+                          <th className="p-2">Mail</th>
                         </tr>
                       </thead>
                       <tbody>
                         {bulkUsers.map((user, index) => (
                           <tr key={`${user.email}-${index}`}>
-                            <td className="p-2">{user.email}</td>
                             <td className="p-2">{user.first_name}</td>
                             <td className="p-2">{user.last_name}</td>
-                            <td className="p-2">{user.key}</td>
-                            <td className="p-2">{user.expiration_date}</td>
+                            <td className="p-2">{user.email}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -597,15 +1021,230 @@ const CreateUserFlow: React.FC = () => {
                 Cancelar
               </Button>
 
+              <Button type="button" primary onClick={handleBulkUploadNext}>
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'bulk-keys' && mode === 'bulk' && (
+          <div className="rounded-3xl border border-white/10 bg-[#1e2633] p-8 shadow-xl shadow-black/10">
+            <div className="mb-8">
+              <Typography variant="h4" color="white">
+                Configurar keys
+              </Typography>
+              <p className="mt-2 text-sm text-white/60">
+                Decide si todos tendrán la misma key o una key random por
+                usuario.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setBulkKeyMode('same')}
+                className={`rounded-2xl border p-6 text-left transition ${
+                  bulkKeyMode === 'same'
+                    ? 'border-primary-500 bg-primary-900/30'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <Typography variant="h5" color="white">
+                  Todos la misma key
+                </Typography>
+                <p className="mt-2 text-sm text-white/60">
+                  Una única key temporal para todos los usuarios del CSV.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBulkKeyMode('random')}
+                className={`rounded-2xl border p-6 text-left transition ${
+                  bulkKeyMode === 'random'
+                    ? 'border-primary-500 bg-primary-900/30'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <Typography variant="h5" color="white">
+                  Una key random por usuario
+                </Typography>
+                <p className="mt-2 text-sm text-white/60">
+                  Cada usuario recibirá una key temporal diferente.
+                </p>
+              </button>
+            </div>
+
+            {bulkKeyMode === 'same' && (
+              <div className="mt-6 max-w-xl">
+                <Field label="Key compartida">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={sharedKey}
+                      onChange={(event) => setSharedKey(event.target.value)}
+                      className={inputClassName}
+                      maxLength={15}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSharedKey(generateRandomKey())}
+                      className="rounded-xl bg-primary-900 px-4 text-sm font-semibold text-white transition hover:bg-primary-800"
+                    >
+                      Random
+                    </button>
+                  </div>
+                </Field>
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-end gap-3">
+              <Button
+                type="button"
+                outline
+                onClick={() => setStep('bulk-upload')}
+              >
+                Atrás
+              </Button>
+
               <Button
                 type="button"
                 primary
-                onClick={handleSubmit}
+                onClick={handleBulkCreateNext}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                Agregar usuarios
+                Siguiente
               </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'actions' && renderActionsStep()}
+
+        {editingCreatedUserIndex !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#1e2633] p-6 shadow-2xl">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <Typography variant="h4" color="white">
+                    Editar datos
+                  </Typography>
+                  <p className="mt-2 text-sm text-white/60">
+                    Estos cambios afectarán a los datos descargados, el mail y
+                    el usuario pendiente.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setEditingCreatedUserIndex(null)}
+                  className="rounded-xl border border-white/10 px-3 py-2 text-white transition hover:bg-white/10"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nombre">
+                  <input
+                    type="text"
+                    value={editingCreatedUser.first_name}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        first_name: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+
+                <Field label="Apellido">
+                  <input
+                    type="text"
+                    value={editingCreatedUser.last_name}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        last_name: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+
+                <Field label="Usuario">
+                  <input
+                    type="text"
+                    value={editingCreatedUser.username}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        username: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+
+                <Field label="Mail">
+                  <input
+                    type="email"
+                    value={editingCreatedUser.email}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+
+                <Field label="Key">
+                  <input
+                    type="text"
+                    value={editingCreatedUser.key}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        key: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+
+                <Field label="Área especializada">
+                  <input
+                    type="text"
+                    value={editingCreatedUser.organization}
+                    onChange={(event) =>
+                      setEditingCreatedUser((current) => ({
+                        ...current,
+                        organization: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+              </div>
+
+              <div className="mt-8 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  outline
+                  onClick={() => setEditingCreatedUserIndex(null)}
+                >
+                  Cancelar
+                </Button>
+
+                <Button type="button" primary onClick={saveCreatedUserEdition}>
+                  Guardar cambios
+                </Button>
+              </div>
             </div>
           </div>
         )}
