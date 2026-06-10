@@ -44,6 +44,11 @@ type Goal = {
 
 type Capacity = {
   aspect?: string;
+  name?: string;
+  label?: string;
+  capacity?: string;
+  capacity_name?: string;
+  title?: string;
   value?: number;
 };
 
@@ -113,6 +118,8 @@ const CHAT_HISTORY_STORAGE_KEY = 'desktopCoachHistory';
 const FREE_SESSION_STORAGE_KEY = 'desktopCoachFreeSessionId';
 const CLOSED_SESSION_STORAGE_KEY = 'desktopCoachClosedSessionId';
 const PERSONALITY_ONBOARDING_KEY = 'desktopCoachPersonalityChosen';
+
+const ENFORCE_COACH_SCOPE_RESTRICTIONS = false;
 
 const ALL_ORGANIZATIONS = '__ALL_ORGANIZATIONS__';
 const ALL_FUNCTIONS = '__ALL_FUNCTIONS__';
@@ -396,6 +403,18 @@ function uniqueStrings(values: string[]) {
   );
 }
 
+function getCapacityLabel(capacity: Capacity) {
+  return (
+    capacity.aspect ||
+    capacity.name ||
+    capacity.label ||
+    capacity.capacity ||
+    capacity.capacity_name ||
+    capacity.title ||
+    ''
+  ).trim();
+}
+
 function flattenAccountField(
   accountInfos: TargetAccountInfo[],
   field: keyof Pick<
@@ -451,6 +470,15 @@ function normalizeDiagnosticReport(report: string) {
     .replace(/\r/g, '')
     .replace(/#{1,6}\s*/g, '')
     .replace(/\*\*/g, '')
+    .trim();
+}
+
+function cleanCoachText(text: string) {
+  return text
+    .replace(/^\s*[-*_]{3,}\s*$/gm, '')
+    .replace(/\*/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
@@ -1172,11 +1200,13 @@ async function askCoach(input: string, instructions: string) {
     }
   );
 
-  if (!data?.text?.trim()) {
+  const text = cleanCoachText(data?.text || '');
+
+  if (!text) {
     throw new Error('Respuesta vacía del coach.');
   }
 
-  return data.text.trim();
+  return text;
 }
 
 const Coach: FunctionComponent = () => {
@@ -1594,26 +1624,36 @@ const Coach: FunctionComponent = () => {
   }, [goalsQuery.data, isAdminMode, scopedPeopleIds]);
 
   const topCapacityHighlights = useMemo(() => {
-    if (isAdminMode) {
-      if (selectedPeople.length === 1 && selectedPersonAccountInfo) {
-        return (selectedPersonAccountInfo.capacity || []).slice(0, 5);
-      }
-
-      return aggregateCapacities(scopedAccountInfos);
+  if (isAdminMode) {
+    if (selectedPeople.length === 1 && selectedPersonAccountInfo) {
+      return (selectedPersonAccountInfo.capacity || []).slice(0, 5);
     }
 
-    return [...(capacitiesQuery.data || [])]
-      .filter((item) => typeof item.value === 'number')
-      .sort((a, b) => (b.value || 0) - (a.value || 0))
-      .slice(0, 5)
-      .map((item) => `${item.aspect}: ${item.value}%`);
-  }, [
-    capacitiesQuery.data,
-    isAdminMode,
-    scopedAccountInfos,
-    selectedPeople.length,
-    selectedPersonAccountInfo,
-  ]);
+    return aggregateCapacities(scopedAccountInfos);
+  }
+
+  const scoredCapacities = [...(capacitiesQuery.data || [])]
+    .filter((item) => typeof item.value === 'number')
+    .map((item) => ({
+      label: getCapacityLabel(item),
+      value: item.value || 0,
+    }))
+    .filter((item) => item.label)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+    .map((item) => `${item.label}: ${item.value}%`);
+
+  return scoredCapacities.length
+    ? scoredCapacities
+    : (userAccountInfo?.capacity || []).slice(0, 5);
+}, [
+  capacitiesQuery.data,
+  isAdminMode,
+  scopedAccountInfos,
+  selectedPeople.length,
+  selectedPersonAccountInfo,
+  userAccountInfo?.capacity,
+]);
 
   const selectedCompanyLabel =
     selectedOrganizationName === ALL_ORGANIZATIONS
@@ -1997,14 +2037,15 @@ const Coach: FunctionComponent = () => {
       return;
     }
 
-    if (
-      mode === 'libre' &&
-      !isAllowedCoachPrompt({
-        text: cleanText,
-        isAdminMode,
-        scopeReady,
-        selectedPersonIds,
-        recentMessages: freeMessages,
+  if (
+    ENFORCE_COACH_SCOPE_RESTRICTIONS &&
+    mode === 'libre' &&
+    !isAllowedCoachPrompt({
+    text: cleanText,
+    isAdminMode,
+    scopeReady,
+    selectedPersonIds,
+    recentMessages: freeMessages,
       })
     ) {
       const userMessage: ChatMessage = {
@@ -2084,15 +2125,9 @@ const Coach: FunctionComponent = () => {
         'Cuando propongas acciones, prioriza 3 como máximo.',
         'Si faltan datos, dilo de forma breve y continúa con una recomendación útil.',
         modeInstruction,
-        mode === 'libre'
-          ? 'En conversación libre, responde solo sobre Open KX, formación, contenidos, información, conocimiento y análisis de la persona o colectivo seleccionado cuando el contexto ya esté fijado.'
-          : '',
         mode === 'libre' && isAdminMode
-          ? 'Si el usuario dice expresiones como "esta persona", "su perfil", "sus competencias", "profundiza", "compáralo con el equipo" o similares, debes entender que se refiere a la persona o colectivo seleccionados en el alcance actual.'
-          : '',
-        mode === 'libre'
-          ? 'Si la pregunta se sale de ese alcance, debes rechazarla brevemente, decir que aquí no toca y preguntar si necesita algo más.'
-          : '',
+        ? 'Si el usuario dice expresiones como "esta persona", "su perfil", "sus competencias", "profundiza", "compáralo con el equipo" o similares, debes entender que se refiere a la persona o colectivo seleccionados en el alcance actual.'
+        : '',
       ]
         .filter(Boolean)
         .join('\n');
@@ -3157,17 +3192,18 @@ const Coach: FunctionComponent = () => {
                         : 'bg-gray-900 text-gray-100'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                   <div className="whitespace-pre-wrap">{cleanCoachText(message.content)}</div>
                   </div>
                 </div>
               ))}
 
               {chatLoading && !previewSession && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl bg-gray-900 px-4 py-3 text-sm text-gray-300">
-                    Pensando respuesta...
-                  </div>
-                </div>
+              <div className="flex justify-start">
+              <div className="flex items-center gap-3 rounded-2xl bg-gray-900 px-4 py-3 text-sm text-gray-300">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-primary-400" />
+              <span>Pensando respuesta</span>
+              </div>
+              </div>
               )}
 
               {chatError && !previewSession && (
@@ -3265,10 +3301,11 @@ const Coach: FunctionComponent = () => {
               )}
 
               {diagnosticLoading && (
-                <div className="rounded-2xl bg-gray-900 px-4 py-4 text-sm text-gray-300">
-                  Generando diagnóstico...
-                </div>
-              )}
+              <div className="flex items-center gap-3 rounded-2xl bg-gray-900 px-4 py-4 text-sm text-gray-300">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-primary-400" />
+                <span>Generando diagnóstico</span>
+              </div>
+            )}
 
               {diagnosticError && (
                 <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
