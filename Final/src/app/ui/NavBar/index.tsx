@@ -30,8 +30,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import WikiLogo from '/src/assets/images/wiki-logo2.svg';
 import api from 'src/app/core/api/apiProvider';
 import { getNoLeidas } from '../../feature-notifications/utils/notificaciones';
+import { toast } from 'react-toastify';
 
 const APP_LANGUAGE_KEY = 'appLanguage';
+
+const INVITE_PARTNER_ENDPOINT =
+  '/accounts/TODO_INVITE_PARTNER_ENDPOINT/';
 
 type AppLanguage = 'es' | 'en';
 
@@ -132,11 +136,48 @@ function ProfileMenu({
     closeMenu();
   }, [navigate]);
 
-  const goToInvitePartner = React.useCallback(() => {
-    // TODO: cambia esta ruta por la pantalla real de invitación.
-    navigate('/invite-partner');
+  const sendPartnerInvitation = React.useCallback(async () => {
+    const payload = {
+      inviter_id: data?.id,
+      inviter_email: data?.email,
+      inviter_username: data?.username,
+    };
+
+    const response = await api.post(
+      `${import.meta.env.VITE_API_URL}${INVITE_PARTNER_ENDPOINT}`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  }, [data?.email, data?.id, data?.username]);
+
+  const goToInvitePartner = React.useCallback(async () => {
     closeMenu();
-  }, [navigate]);
+
+    try {
+      await sendPartnerInvitation();
+      toast.success(
+        language === 'en'
+          ? 'Partner invitation sent successfully'
+          : 'Invitación enviada correctamente'
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          error?.message ||
+          (language === 'en'
+            ? 'Error sending partner invitation'
+            : 'Error al enviar la invitación')
+      );
+    }
+  }, [language, sendPartnerInvitation]);
 
   const goToHistory = React.useCallback(() => {
     navigate('/history');

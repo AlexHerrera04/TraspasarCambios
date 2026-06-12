@@ -8,7 +8,6 @@ import Button from 'src/app/ui/Button';
 import withNavbar from '../../core/handlers/withNavbar';
 import { useOrganizations } from '../services/organizationService';
 import {
-  buildInvitationMailto,
   downloadInvitationsCsv,
   StoredUserInvitation,
   upsertUserInvitations,
@@ -45,6 +44,9 @@ type CreatedUser = Pick<
 
 const randomCharacters =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+const ADMIN_USER_INVITATION_ENDPOINT =
+  '/accounts/TODO_SEND_USER_INVITATION_ENDPOINT/';
 
 function generateRandomKey(length = 15) {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -424,31 +426,58 @@ const CreateUserFlow: React.FC = () => {
     toast.success('Datos descargados correctamente');
   };
 
-  const handleSendInvitations = () => {
+  const sendUserInvitation = async (invitation: CreatedUser) => {
+    const payload = {
+      email: invitation.email,
+      username: invitation.username,
+      key: invitation.key,
+      first_name: invitation.first_name,
+      last_name: invitation.last_name,
+      organization: invitation.organization,
+      organization_id: invitation.organization_id,
+    };
+
+    const response = await api.post(
+      `${import.meta.env.VITE_API_URL}${ADMIN_USER_INVITATION_ENDPOINT}`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+  const handleSendInvitations = async () => {
     if (!createdUsers.length) return;
 
-    const invitations = createdUsers.map((user) => ({
-      ...user,
-      status: 'pending' as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
+    try {
+      setIsSubmitting(true);
 
-    upsertUserInvitations(createdUsers, 'invited');
+      for (const invitation of createdUsers) {
+        await sendUserInvitation(invitation);
+      }
 
-    if (invitations.length === 1) {
-      window.location.href = buildInvitationMailto(invitations[0]);
-      toast.success('Abriendo cliente de correo');
-      return;
+      upsertUserInvitations(createdUsers, 'invited');
+
+      toast.success(
+        createdUsers.length === 1
+          ? 'Mail enviado correctamente'
+          : 'Mails enviados correctamente'
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Error al enviar los mails'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    invitations.forEach((invitation, index) => {
-      window.setTimeout(() => {
-        window.open(buildInvitationMailto(invitation), '_blank');
-      }, index * 250);
-    });
-
-    toast.success('Abriendo cliente de correo para los usuarios');
   };
 
   const handleInviteLater = () => {
@@ -547,7 +576,13 @@ const CreateUserFlow: React.FC = () => {
           Descargar datos
         </Button>
 
-        <Button type="button" primary onClick={handleSendInvitations}>
+        <Button
+          type="button"
+          primary
+          onClick={handleSendInvitations}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
           Enviar mail
         </Button>
       </div>

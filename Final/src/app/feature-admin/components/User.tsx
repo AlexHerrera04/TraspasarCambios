@@ -40,7 +40,6 @@ import {
   findUserInvitation,
   markUserInvitationEnrolled,
   readUserInvitations,
-  sendInvitationEmail,
   StoredUserInvitation,
   updateUserInvitation,
 } from '../utils/userInvitations';
@@ -61,6 +60,9 @@ const statusLabels: Record<UserStatusFilter, string> = {
   pending: 'Usuarios pendientes',
   invited: 'Usuarios invitados',
 };
+
+const ADMIN_USER_INVITATION_ENDPOINT =
+  '/accounts/TODO_SEND_USER_INVITATION_ENDPOINT/';
 
 const getUserDisplayName = (user: User) => {
   if (user.public_name) return user.public_name;
@@ -347,14 +349,55 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
     downloadInvitationsCsv([invitation], `usuario-${invitation.email}.csv`);
   };
 
-  const handleSendInvitation = (user: User) => {
+  const sendUserInvitation = async (invitation: StoredUserInvitation) => {
+    const payload = {
+      email: invitation.email,
+      username: invitation.username,
+      key: invitation.key,
+      first_name: invitation.first_name,
+      last_name: invitation.last_name,
+      organization: invitation.organization,
+      organization_id: invitation.organization_id,
+    };
+
+    const response = await api.post(
+      `${import.meta.env.VITE_API_URL}${ADMIN_USER_INVITATION_ENDPOINT}`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+  const handleSendInvitation = async (user: User) => {
     const invitation =
       getInvitationForUser(user) || findUserInvitation(getUserEmail(user));
 
     if (!invitation) return;
 
-    sendInvitationEmail(invitation);
-    refreshStoredInvitations();
+    try {
+      await sendUserInvitation(invitation);
+      updateUserInvitation(invitation.email, { status: 'invited' });
+      refreshStoredInvitations();
+
+      toast.success(
+        invitation.status === 'invited'
+          ? 'Mail reenviado correctamente'
+          : 'Mail enviado correctamente'
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Error al enviar el mail'
+      );
+    }
   };
 
   const handleOpenEditInvitation = (user: User) => {
