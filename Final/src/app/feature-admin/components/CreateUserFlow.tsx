@@ -211,6 +211,7 @@ const CreateUserFlow: React.FC = () => {
   const [sharedKey, setSharedKey] = useState(generateRandomKey());
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSendConfirmation, setShowSendConfirmation] = useState(false);
 
   const [editingCreatedUserIndex, setEditingCreatedUserIndex] = useState<
     number | null
@@ -480,6 +481,17 @@ const CreateUserFlow: React.FC = () => {
     }
   };
 
+  const handleRequestSendInvitations = () => {
+  if (!createdUsers.length) return;
+
+  setShowSendConfirmation(true);
+};
+
+const handleConfirmSendInvitations = async () => {
+  setShowSendConfirmation(false);
+  await handleSendInvitations();
+};
+
   const handleInviteLater = () => {
     upsertUserInvitations(createdUsers, 'pending');
     toast.success('Usuarios guardados como pendientes');
@@ -579,7 +591,7 @@ const CreateUserFlow: React.FC = () => {
         <Button
           type="button"
           primary
-          onClick={handleSendInvitations}
+          onClick={handleRequestSendInvitations}
           disabled={isSubmitting}
         >
           {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
@@ -618,7 +630,7 @@ const CreateUserFlow: React.FC = () => {
             </div>
 
             <div className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300">
-              Pendiente
+              Creado
             </div>
           </div>
 
@@ -1157,6 +1169,44 @@ const CreateUserFlow: React.FC = () => {
         )}
 
         {step === 'actions' && renderActionsStep()}
+
+        {showSendConfirmation && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+    <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#1e2633] p-6 shadow-2xl">
+      <Typography variant="h4" color="white">
+        Confirmar envío de mail
+      </Typography>
+
+      <p className="mt-3 text-sm leading-6 text-white/65">
+        {`¿Seguro que quieres enviar el mail de invitación${
+          createdUsers.length === 1
+            ? ` a ${createdUsers[0].email}`
+            : ` a ${createdUsers.length} usuarios`
+        }?`}
+      </p>
+
+      <div className="mt-8 flex justify-end gap-3">
+        <Button
+          type="button"
+          outline
+          onClick={() => setShowSendConfirmation(false)}
+        >
+          Cancelar
+        </Button>
+
+        <Button
+          type="button"
+          primary
+          onClick={handleConfirmSendInvitations}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+          Confirmar y enviar
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
         {editingCreatedUserIndex !== null && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">

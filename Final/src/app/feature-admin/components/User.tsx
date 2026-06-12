@@ -53,12 +53,14 @@ interface Capacity {
   name: string;
 }
 
-type UserStatusFilter = 'active' | 'pending' | 'invited';
+type UserStatus = 'active' | 'pending' | 'invited';
+type UserStatusFilter = 'total' | UserStatus;
 
 const statusLabels: Record<UserStatusFilter, string> = {
-  active: 'Usuarios activos',
-  pending: 'Usuarios pendientes',
-  invited: 'Usuarios invitados',
+  total: 'Usuarios Totales',
+  active: 'Usuario Enrolado',
+  pending: 'Creado',
+  invited: 'Invitado (No Onboarded)',
 };
 
 const ADMIN_USER_INVITATION_ENDPOINT =
@@ -104,12 +106,13 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
   const [selectedUser, setSelectedUser] = useState<GroupUser | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [showCapacitiesModal, setShowCapacitiesModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>('active');
+  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>('total');
   const [storedInvitations, setStoredInvitations] = useState<
     StoredUserInvitation[]
   >(() => readUserInvitations());
   const [editingInvitation, setEditingInvitation] =
-    useState<StoredUserInvitation | null>(null);
+  useState<StoredUserInvitation | null>(null);
+  const [invitationToSend, setInvitationToSend] = useState<User | null>(null);
   const [editingOriginalEmail, setEditingOriginalEmail] = useState('');
   const [editForm, setEditForm] = useState({
     first_name: '',
@@ -194,7 +197,7 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
     );
   };
 
-  const getUserStatus = (user: User): UserStatusFilter => {
+  const getUserStatus = (user: User): UserStatus => {
     const invitation = getInvitationForUser(user);
     const enrollmentDate = getUserEnrollmentDate(user);
 
@@ -265,19 +268,21 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
   }, [users, invitationOnlyUsers]);
 
   const statusCounts = useMemo(() => {
-    return tableUsers.reduce(
-      (acc: Record<UserStatusFilter, number>, user: User) => {
-        const status = getUserStatus(user);
-        acc[status] += 1;
-        return acc;
-      },
-      {
-        active: 0,
-        pending: 0,
-        invited: 0,
-      }
-    );
-  }, [tableUsers, storedInvitations]);
+  return tableUsers.reduce(
+    (acc: Record<UserStatusFilter, number>, user: User) => {
+      const status = getUserStatus(user);
+      acc.total += 1;
+      acc[status] += 1;
+      return acc;
+    },
+    {
+      total: 0,
+      active: 0,
+      pending: 0,
+      invited: 0,
+    }
+  );
+}, [tableUsers, storedInvitations]);
 
   const filteredUsers = tableUsers.filter((user: User) => {
     const matchesSearch =
@@ -292,7 +297,8 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
         field?.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-    const matchesStatus = getUserStatus(user) === statusFilter;
+    const matchesStatus =
+    statusFilter === 'total' || getUserStatus(user) === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -401,6 +407,19 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
   };
 
   const handleOpenEditInvitation = (user: User) => {
+
+  const handleRequestSendInvitation = (user: User) => {
+  setInvitationToSend(user);
+};
+
+const handleConfirmSendInvitation = async () => {
+  if (!invitationToSend) return;
+
+  const user = invitationToSend;
+
+  setInvitationToSend(null);
+  await handleSendInvitation(user);
+};
     const invitation =
       getInvitationForUser(user) || findUserInvitation(getUserEmail(user));
 
@@ -503,7 +522,10 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
     }
   };
 
-  if (isLoading) {
+  const invitationToConfirm = invitationToSend
+  ? getInvitationForUser(invitationToSend) ||
+    findUserInvitation(getUserEmail(invitationToSend))
+  : null;
     return (
       <Card className="h-full w-full bg-gray-800">
         <CardBody className="flex justify-center p-10">
@@ -517,8 +539,8 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
     <Card className="h-full w-full bg-gray-800">
       <CardBody className="overflow-y-auto px-0">
         <div className="mx-4 mb-6 rounded-lg bg-gray-900 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            {(['active', 'pending', 'invited'] as UserStatusFilter[]).map(
+          <div className="grid gap-3 md:grid-cols-4">
+            {(['total', 'active', 'pending', 'invited'] as UserStatusFilter[]).map(
               (status) => (
                 <button
                   key={status}
@@ -627,13 +649,13 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
                     >
                       {status === 'active'
                         ? enrollmentDate
-                          ? `Activo desde ${formatEnrollmentDate(
+                        ? `Usuario Enrolado desde ${formatEnrollmentDate(
                               enrollmentDate
-                            )}`
-                          : 'Activo'
+                                 )}`
+                        : 'Usuario Enrolado'
                         : status === 'invited'
-                          ? 'Invitado'
-                          : 'Pendiente'}
+                         ? 'Invitado (No Onboarded)'
+                        : 'Creado'}
                     </span>
                   </td>
 
@@ -758,7 +780,7 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
                             <IconButton
                               variant="text"
                               color="white"
-                              onClick={() => handleSendInvitation(user)}
+                              onClick={() => handleRequestSendInvitation(user)}
                             >
                               <PaperAirplaneIcon className="h-4 w-4" />
                             </IconButton>
@@ -930,9 +952,46 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
           </div>
         </div>
       </Dialog>
-
+      
       <Dialog
-        open={showCapacitiesModal}
+  open={Boolean(invitationToSend)}
+  handler={() => setInvitationToSend(null)}
+  className="max-w-md bg-gray-800"
+>
+  <div className="p-6">
+    <Typography variant="h5" className="text-white">
+      Confirmar envío de mail
+    </Typography>
+
+    <p className="mt-3 text-sm leading-6 text-gray-300">
+      {`¿Seguro que quieres enviar el mail de invitación${
+        invitationToConfirm?.email ? ` a ${invitationToConfirm.email}` : ''
+      }?`}
+    </p>
+
+    <div className="mt-6 flex justify-end gap-3">
+      <Button
+        onClick={() => setInvitationToSend(null)}
+        type="button"
+        variant="outlined"
+      >
+        Cancelar
+      </Button>
+
+      <Button
+        type="button"
+        variant="filled"
+        onClick={handleConfirmSendInvitation}
+      >
+        Confirmar y enviar
+      </Button>
+    </div>
+  </div>
+</Dialog>
+
+<Dialog
+  open={showCapacitiesModal}
+      
         handler={() => setShowCapacitiesModal(false)}
         className="max-w-md bg-gray-800"
       >
