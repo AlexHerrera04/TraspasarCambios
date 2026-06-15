@@ -194,7 +194,11 @@ const Dashboard = () => {
   const copy =
     language === 'en'
       ? {
+<<<<<<< HEAD
+          breadcrumb: 'My Dashboard',
+=======
           breadcrumb: 'Home > My Dashboard',
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
           digitalAdn: 'DIGITAL DNA',
           operative: 'Operative',
           strategic: 'Strategic',
@@ -215,7 +219,11 @@ const Dashboard = () => {
           contentForYou: 'Content for you',
         }
       : {
+<<<<<<< HEAD
+          breadcrumb: 'Mi Panel',
+=======
           breadcrumb: 'Inicio > Mi Panel',
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
           digitalAdn: 'ADN DIGITAL',
           operative: 'Operative',
           strategic: 'Strategic',

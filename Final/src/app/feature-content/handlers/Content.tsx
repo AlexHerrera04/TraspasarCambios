@@ -1,5 +1,5 @@
 import {
-  CheckCircleIcon,
+CheckCircleIcon,
   ClockIcon,
   EyeIcon,
   PencilIcon,
@@ -271,7 +271,7 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
     language === 'en'
       ? {
           createdLabel: 'Created',
-          viewsLabel: 'Views',
+          reviewsLabel: 'No. of reviews',
           ratingLabel: 'Rating',
           viewContent: 'View details',
           editContent: 'Edit',
@@ -279,7 +279,7 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
         }
       : {
           createdLabel: 'Creado',
-          viewsLabel: 'Reviews',
+          reviewsLabel: 'Nº de reviews',
           ratingLabel: 'Valoración',
           viewContent: 'Ver detalle',
           editContent: 'Editar',
@@ -292,7 +292,8 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
         const hasImage = !!content.public_image;
         const contentName = content.name || content.title || '-';
         const contentType = getTypeLabel(content.type);
-        const contentViews =
+
+        const reviewCount =
           content.number_of_reviews ??
           content.reviews ??
           content.review_count ??
@@ -360,7 +361,10 @@ const ExpertContentCards: FunctionComponent<any> = (props: any) => {
                   label={copy.createdLabel}
                   value={getLocalizedDate(content.created_at, language)}
                 />
-                <MetaItem label={copy.viewsLabel} value={String(contentViews)} />
+                <MetaItem
+                  label={copy.reviewsLabel}
+                  value={String(reviewCount)}
+                />
                 <MetaItem
                   label={copy.ratingLabel}
                   value={content.rating || '-'}

@@ -525,8 +525,40 @@ const Capacities = (props: any) => {
               <div className="mb-6 w-[250px]">
                 <label
                   className="block mb-2 text-sm text-gray-300"
-                  htmlFor="username"
+                  htmlFor="alcance"
                 >
+<<<<<<< HEAD
+                  {copy.scope}
+                </label>
+
+                <SelectInput
+                  id="alcance"
+                  name="alcance"
+                  size="lg"
+                  value={selectedScope}
+                  onChange={handleScopeChange}
+                  placeholder={copy.selectOption}
+                  options={[
+                    { label: copy.scopeAll, value: 'all' },
+                    {
+                      label: copy.myKeyCompetencies,
+                      value: 'my_competencies',
+                    },
+                    {
+                      label: copy.myComplementaryCompetencies,
+                      value: 'my_complementary_competencies',
+                    },
+                  ]}
+                ></SelectInput>
+              </div>
+
+              <div className="mb-6 w-[250px]">
+                <label
+                  className="block mb-2 text-sm text-gray-300"
+                  htmlFor="roles"
+                >
+=======
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
                   {copy.capacityGroup}
                 </label>
 
@@ -545,8 +577,10 @@ const Capacities = (props: any) => {
               <div className="mb-6 w-[250px]">
                 <label
                   className="block mb-2 text-sm text-gray-300"
-                  htmlFor="username"
+                  htmlFor="benchmark"
                 >
+<<<<<<< HEAD
+=======
                   {copy.scope}
                 </label>
 
@@ -576,13 +610,14 @@ const Capacities = (props: any) => {
                   className="block mb-2 text-sm text-gray-300"
                   htmlFor="username"
                 >
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
                   {copy.benchmark}
                 </label>
 
                 <SelectInput
                   isMulti
-                  id="roles"
-                  name="roles"
+                  id="benchmark"
+                  name="benchmark"
                   size="lg"
                   value={selectedRoles}
                   onChange={handleRoleChange}

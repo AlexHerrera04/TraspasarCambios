@@ -1,4 +1,4 @@
-import { FormEvent, FunctionComponent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from 'src/app/core/api/apiProvider';
@@ -109,6 +109,14 @@ type AdminScopeUser = {
   is_manager?: boolean;
 };
 
+type OrganizationalContextField = {
+  id: string;
+  label: string;
+  placeholder: string;
+};
+
+type OrganizationalContextValues = Record<string, string>;
+
 const FREE_CHAT_STORAGE_KEY = 'desktopCoachFreeMessages';
 const CLOSED_CHAT_STORAGE_KEY = 'desktopCoachClosedMessages';
 const PERSONALITY_KEY = 'desktopCoachPersonality';
@@ -120,11 +128,59 @@ const FREE_SESSION_STORAGE_KEY = 'desktopCoachFreeSessionId';
 const CLOSED_SESSION_STORAGE_KEY = 'desktopCoachClosedSessionId';
 const PERSONALITY_ONBOARDING_KEY = 'desktopCoachPersonalityChosen';
 
+const ORGANIZATIONAL_CONTEXT_STORAGE_KEY = 'desktopCoachOrganizationalContext';
+
+const SIMULATE_SUPER_ADMIN = true;
+
 const ENFORCE_COACH_SCOPE_RESTRICTIONS = false;
 
 const ALL_ORGANIZATIONS = '__ALL_ORGANIZATIONS__';
 const ALL_FUNCTIONS = '__ALL_FUNCTIONS__';
 const ALL_AREAS = '__ALL_AREAS__';
+
+const ORGANIZATIONAL_CONTEXT_FIELDS: OrganizationalContextField[] = [
+  {
+    id: 'valoresCultura',
+    label: 'Valores y cultura corporativa',
+    placeholder:
+      'Pega aquí valores, principios culturales, rituales y comportamientos esperados.',
+  },
+  {
+    id: 'reglamentosPoliticas',
+    label: 'Reglamentos y políticas internas',
+    placeholder:
+      'Incluye políticas internas, reglamentos, normas de convivencia o compliance.',
+  },
+  {
+    id: 'manualesProcedimientos',
+    label: 'Manuales y procedimientos',
+    placeholder:
+      'Añade manuales operativos, procesos, guías paso a paso o protocolos internos.',
+  },
+  {
+    id: 'competenciasLiderazgo',
+    label: 'Competencias y modelos de liderazgo',
+    placeholder:
+      'Describe competencias clave, frameworks de liderazgo y criterios de evaluación.',
+  },
+  {
+    id: 'faqsDocumentacion',
+    label: 'FAQs y documentación estratégica',
+    placeholder:
+      'Pega preguntas frecuentes, documentación estratégica o conocimiento interno relevante.',
+  },
+  {
+    id: 'restriccionesLineamientos',
+    label: 'Restricciones o lineamientos específicos',
+    placeholder:
+      'Detalla restricciones, límites, criterios sensibles o lineamientos específicos.',
+  },
+];
+
+const EMPTY_ORGANIZATIONAL_CONTEXT = ORGANIZATIONAL_CONTEXT_FIELDS.reduce(
+  (context, field) => ({ ...context, [field.id]: '' }),
+  {} as OrganizationalContextValues
+);
 
 const DIAGNOSTIC_DIMENSIONS: {
   id: DiagnosticDimension;
@@ -343,6 +399,38 @@ function safeReadBoolean(key: string) {
   } catch {
     return false;
   }
+}
+
+function safeReadOrganizationalContext(
+  key: string
+): OrganizationalContextValues {
+  const stored = safeParseJson<OrganizationalContextValues>(
+    key,
+    EMPTY_ORGANIZATIONAL_CONTEXT
+  );
+
+  return {
+    ...EMPTY_ORGANIZATIONAL_CONTEXT,
+    ...(stored || {}),
+  };
+}
+
+function buildOrganizationalContextPrompt(
+  context: OrganizationalContextValues
+) {
+  const filledFields = ORGANIZATIONAL_CONTEXT_FIELDS.map((field) => ({
+    label: field.label,
+    value: context[field.id]?.trim() || '',
+  })).filter((field) => field.value);
+
+  if (!filledFields.length) return '';
+
+  return [
+    'Contexto organizacional cargado por el super admin:',
+    ...filledFields.map((field) => `${field.label}:\n${field.value}`),
+    'El Coach AI de Open KX utilizará automáticamente este contexto como capa de conocimiento para personalizar sus respuestas. recomendaciones y acompañamiento, asegurando que estén alineados con la realidad, cultura y normas de cada organización.',
+    
+  ].join('\n\n');
 }
 
 function safeReadDiagnosticMeta(key: string): DiagnosticMeta {
@@ -1215,7 +1303,10 @@ const Coach: FunctionComponent = () => {
   const [searchParams] = useSearchParams();
   const isAdminMode = searchParams.get('admin') === '1';
   const { userAccountInfo, userInfo } = useUser();
-  const isSuperAdmin = Boolean(userAccountInfo?.is_account_admin);
+  const isSuperAdmin =
+  SIMULATE_SUPER_ADMIN || Boolean(userAccountInfo?.is_account_admin);
+
+
 
   const freeChatStorageKey = getScopedStorageKey(
     FREE_CHAT_STORAGE_KEY,
@@ -1343,6 +1434,14 @@ const Coach: FunctionComponent = () => {
     organizacional: false,
     historial: false,
   });
+
+  const [organizationalContext, setOrganizationalContext] =
+  useState<OrganizationalContextValues>(() =>
+    safeReadOrganizationalContext(ORGANIZATIONAL_CONTEXT_STORAGE_KEY)
+  );
+
+  const [activeOrganizationalFieldId, setActiveOrganizationalFieldId] =
+  useState<string | null>(null);
 
   const goalsQuery = useQuery<Goal[]>({
     queryKey: ['coach-goals', isAdminMode ? 'admin' : 'user'],
@@ -1953,6 +2052,13 @@ const Coach: FunctionComponent = () => {
   }, [diagnosticFeedback, diagnosticFeedbackStorageKey]);
 
   useEffect(() => {
+  localStorage.setItem(
+    ORGANIZATIONAL_CONTEXT_STORAGE_KEY,
+    JSON.stringify(organizationalContext)
+  );
+}, [organizationalContext]);
+
+  useEffect(() => {
     setHistorySessions((current) =>
       upsertHistorySession(current, freeSessionId, 'libre', freeMessages, personality)
     );
@@ -1989,6 +2095,32 @@ const Coach: FunctionComponent = () => {
     const body = encodeURIComponent(shareText);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
+
+  const updateOrganizationalContextField = (fieldId: string, value: string) => {
+  setOrganizationalContext((current) => ({
+    ...current,
+    [fieldId]: value,
+  }));
+};
+
+const handleOrganizationalContextFileChange =
+  (fieldId: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      updateOrganizationalContextField(fieldId, String(reader.result || ''));
+    };
+
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  const activeOrganizationalField = ORGANIZATIONAL_CONTEXT_FIELDS.find(
+  (field) => field.id === activeOrganizationalFieldId
+  );
 
   const togglePanel = (panel: PanelKey) => {
     setOpenPanels((current) => ({
@@ -2111,6 +2243,9 @@ const Coach: FunctionComponent = () => {
           ? 'Modo conversación libre: responde con naturalidad, cercanía y foco. No suenes robótico.'
           : 'Modo conversación cerrada: responde solo a la acción elegida por el usuario. Ve al grano, sé útil y no abras líneas innecesarias.';
 
+      const organizationalContextPrompt =
+      buildOrganizationalContextPrompt(organizationalContext);
+
       const perspectiveInstruction = buildPerspectiveInstruction(
         isAdminMode,
         selectedPersonIds,
@@ -2119,25 +2254,28 @@ const Coach: FunctionComponent = () => {
       );
 
       const instructions = [
-        PERSONALITIES[personality].prompt,
-        'Responde siempre en español.',
-        perspectiveInstruction,
-        'Que la personalidad elegida se note de verdad.',
-        'Mantén un tono humano, natural y cercano.',
-        'Sé concreto.',
-        'Cuando propongas acciones, prioriza 3 como máximo.',
-        'Si faltan datos, dilo de forma breve y continúa con una recomendación útil.',
-        modeInstruction,
-        mode === 'libre' && isAdminMode
-        ? 'Si el usuario dice expresiones como "esta persona", "su perfil", "sus competencias", "profundiza", "compáralo con el equipo" o similares, debes entender que se refiere a la persona o colectivo seleccionados en el alcance actual.'
-        : '',
+      PERSONALITIES[personality].prompt,
+      'Responde siempre en español.',
+      perspectiveInstruction,
+      'Que la personalidad elegida se note de verdad.',
+      'Mantén un tono humano, natural y cercano.',
+      'Sé concreto.',
+      'Cuando propongas acciones, prioriza 3 como máximo.',
+      'Si faltan datos, dilo de forma breve y continúa con una recomendación útil.',
+      modeInstruction,
+      organizationalContextPrompt
+      ? 'Usa el contexto organizacional cargado por el super admin como capa de conocimiento interna. No lo recites completo salvo que el usuario lo pida; úsalo para alinear respuestas con cultura, normas, políticas y lineamientos.'
+      : '',
+      mode === 'libre' && isAdminMode
+      ? 'Si el usuario dice expresiones como "esta persona", "su perfil", "sus competencias", "profundiza", "compáralo con el equipo" o similares, debes entender que se refiere a la persona o colectivo seleccionados en el alcance actual.'
+      : '',
       ]
-        .filter(Boolean)
-        .join('\n');
+      .filter(Boolean)
+      .join('\n');
 
       const coachReply = await askCoach(
-        `${context}\n\nConversación reciente:\n${history}\n\nÚltimo mensaje del usuario:\n${cleanText}`,
-        instructions
+      `${context}${organizationalContextPrompt ? `\n\n${organizationalContextPrompt}` : ''}\n\nConversación reciente:\n${history}\n\nÚltimo mensaje del usuario:\n${cleanText}`,
+      instructions
       );
 
       const assistantMessage: ChatMessage = {
@@ -2198,6 +2336,9 @@ const Coach: FunctionComponent = () => {
         .filter(Boolean)
         .join('\n\n');
 
+      const organizationalContextPrompt =
+      buildOrganizationalContextPrompt(organizationalContext);
+
       const perspectiveInstruction = buildPerspectiveInstruction(
         isAdminMode,
         selectedPersonIds,
@@ -2235,6 +2376,9 @@ const Coach: FunctionComponent = () => {
         'Si eres brutal, confronta con firmeza y utilidad, sin humillar.',
         'Máximo 500 palabras.',
         'No inventes datos que no estén en el contexto.',
+        organizationalContextPrompt
+        ? 'Usa el contexto organizacional cargado por el super admin como capa de conocimiento interna para alinear el diagnóstico con la cultura, normas, políticas y lineamientos de la organización.'
+        : '',
         isAdminMode
           ? `Debes centrar el diagnóstico solo en estas dimensiones: ${selectedDiagnosticDimensions
               .map(
@@ -2261,8 +2405,8 @@ const Coach: FunctionComponent = () => {
         .join('\n');
 
       const report = await askCoach(
-        `${diagnosticContext}\n\nElabora un diagnóstico ejecutivo del usuario a partir de su perfil, su contexto y sus metas actuales.`,
-        instructions
+      `${diagnosticContext}${organizationalContextPrompt ? `\n\n${organizationalContextPrompt}` : ''}\n\nElabora un diagnóstico ejecutivo del usuario a partir de su perfil, su contexto y sus metas actuales.`,
+      instructions
       );
 
       setDiagnosticReport(normalizeDiagnosticReport(report));
@@ -3072,14 +3216,126 @@ const Coach: FunctionComponent = () => {
 
             {isSuperAdmin && openPanels.organizacional && (
               <div className="mt-4 rounded-xl border border-primary-500/20 bg-primary-900/10 p-4">
-                <p className="text-sm font-semibold text-primary-200">
-                  Contexto organizacional
+                <p className="text-sm leading-6 text-gray-300">
+                  El Coach AI de Open KX utilizará automáticamente este contexto
+                  como capa de conocimiento para personalizar sus respuestas.
                 </p>
 
-                <p className="mt-2 text-sm leading-6 text-gray-300">
-                  Este apartado está reservado para información organizacional y
-                  solo puede verlo el super admin.
-                </p>
+                <div className="mt-5 space-y-2">
+                  {ORGANIZATIONAL_CONTEXT_FIELDS.map((field) => {
+                    const hasContent = Boolean(
+                      organizationalContext[field.id]?.trim()
+                    );
+
+                    return (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-gray-900/70 px-4 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-gray-100">
+                            {field.label}
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-500">
+                            {hasContent ? 'Contenido cargado' : 'Sin contenido'}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveOrganizationalFieldId(field.id)
+                          }
+                          className="rounded-lg border border-primary-400/40 bg-primary-600/20 px-3 py-1.5 text-xs font-semibold text-primary-100 transition hover:bg-primary-600/30"
+                        >
+                          {hasContent ? 'Editar' : 'Añadir'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {activeOrganizationalField && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-gray-900 p-5 shadow-2xl">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {activeOrganizationalField.label}
+                          </h3>
+
+                          <p className="mt-1 text-sm text-gray-400">
+                            Puedes pegar texto directamente o cargar un archivo
+                            .txt.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveOrganizationalFieldId(null)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-gray-300 transition hover:bg-white/10"
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={
+                          organizationalContext[
+                            activeOrganizationalField.id
+                          ] || ''
+                        }
+                        onChange={(event) =>
+                          updateOrganizationalContextField(
+                            activeOrganizationalField.id,
+                            event.target.value
+                          )
+                        }
+                        rows={14}
+                        placeholder={activeOrganizationalField.placeholder}
+                        className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-gray-950 p-4 text-sm leading-6 text-black outline-none transition placeholder:text-gray-500 focus:border-primary-400"
+                      />
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="cursor-pointer rounded-lg border border-primary-400/40 bg-primary-600/20 px-4 py-2 text-sm font-semibold text-primary-100 transition hover:bg-primary-600/30">
+                            Cargar .txt
+                            <input
+                              type="file"
+                              accept=".txt,text/plain"
+                              onChange={handleOrganizationalContextFileChange(
+                                activeOrganizationalField.id
+                              )}
+                              className="hidden"
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateOrganizationalContextField(
+                                activeOrganizationalField.id,
+                                ''
+                              )
+                            }
+                            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-white/10"
+                          >
+                            Limpiar
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveOrganizationalFieldId(null)}
+                          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-500"
+                        >
+                          Guardar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

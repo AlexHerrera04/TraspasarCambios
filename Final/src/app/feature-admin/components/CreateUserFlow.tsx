@@ -667,7 +667,7 @@ const handleConfirmSendInvitations = async () => {
   const downloadCsvTemplate = () => {
     const content = [
       'nombre,apellido,mail',
-      'Nombre,Apellido,persona@empresa.com',
+      'Ej: Nombre,Apellido,persona@empresa.com',
     ].join('\n');
 
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });

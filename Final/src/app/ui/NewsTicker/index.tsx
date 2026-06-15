@@ -15,6 +15,10 @@ type NewsItem = {
 };
 
 const APP_LANGUAGE_KEY = 'appLanguage';
+<<<<<<< HEAD
+const NEWS_TICKER_COLLAPSED_STORAGE_KEY = 'newsTickerCollapsed';
+=======
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
 
 const NEWS_ITEMS_ES: NewsItem[] = [
   {
@@ -128,6 +132,14 @@ const getItemsPerPage = () => {
   return 1;
 };
 
+const readCollapsedState = () => {
+  try {
+    return localStorage.getItem(NEWS_TICKER_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
 const NewsCard = ({ item }: { item: NewsItem }) => {
   return (
     <a
@@ -180,12 +192,23 @@ const NewsTicker = () => {
     [language]
   );
 
+<<<<<<< HEAD
+  const [isCollapsed, setIsCollapsed] = useState(readCollapsedState);
+=======
   const [isCollapsed, setIsCollapsed] = useState(false);
+>>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
   const [itemsPerPage, setItemsPerPage] = useState<number>(getItemsPerPage);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const totalItems = newsItems.length;
   const maxIndex = Math.max(totalItems - itemsPerPage, 0);
+
+  useEffect(() => {
+    localStorage.setItem(
+      NEWS_TICKER_COLLAPSED_STORAGE_KEY,
+      String(isCollapsed)
+    );
+  }, [isCollapsed]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -221,6 +244,10 @@ const NewsTicker = () => {
     };
   }, [isCollapsed, maxIndex]);
 
+  const handleToggleCollapsed = () => {
+    setIsCollapsed((current) => !current);
+  };
+
   const handleNext = () => {
     setCurrentIndex((current) => (current >= maxIndex ? 0 : current + 1));
   };
@@ -240,7 +267,7 @@ const NewsTicker = () => {
 
         <button
           type="button"
-          onClick={() => setIsCollapsed((current) => !current)}
+          onClick={handleToggleCollapsed}
           className="self-start rounded-lg border border-white/10 bg-gray-900 px-2.5 py-1.5 text-sm font-normal text-white/70 transition hover:bg-white/10 hover:text-white md:self-auto"
         >
           {isCollapsed ? copy.maximize : copy.minimize}
