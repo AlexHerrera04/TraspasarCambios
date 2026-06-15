@@ -527,8 +527,6 @@ const NewContent: FunctionComponent<any> = () => {
     try {
       setUploading(true);
       values.delete('industry_id');
-      values.set('status', 'false');
-
       if (
         typeof values.get('public_image') === 'string' ||
         !values.get('public_image')

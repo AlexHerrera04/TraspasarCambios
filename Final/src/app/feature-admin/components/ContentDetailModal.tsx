@@ -14,7 +14,6 @@ import {
 } from '@material-tailwind/react';
 import {
   CheckCircleIcon,
-  UserCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
@@ -212,13 +211,6 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
     },
   });
 
-  const fullName =
-    [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() ||
-    data?.public_name ||
-    'N/A';
-
-  const profileImage = data?.profile_picture || data?.wiki_avatar || '';
-
   return (
     <>
       <Button variant="outlined" onClick={handleOpen}>
@@ -240,69 +232,31 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
       >
         <div className="p-6">
           <Typography variant="h4" className="mb-4 text-white">
-            Compartido por:
+            Contact
           </Typography>
 
           {isFetching ? (
             <div>Loading...</div>
           ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt={fullName}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-700">
-                    <UserCircleIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-
-                <div>
-                  <Typography variant="small" className="mb-1 text-white/50">
-                    Nombre completo
-                  </Typography>
-                  <Typography variant="paragraph">{fullName}</Typography>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <Typography variant="small" className="mb-1 text-white/50">
-                  Email
-                </Typography>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 text-800">
+                <Typography variant="h6">Email: </Typography>
                 <Typography variant="paragraph">
-                  {data?.contact_email ?? 'N/A'}
+                  {data.contact_email ?? 'N/A'}
                 </Typography>
               </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <Typography variant="small" className="mb-1 text-white/50">
-                  Teléfono
-                </Typography>
+              <div className="flex gap-2 text-800">
+                <Typography variant="h6">Phone: </Typography>
                 <Typography variant="paragraph">
-                  {data?.phone_number ?? 'N/A'}
+                  {data.phone_number ?? 'N/A'}
                 </Typography>
               </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <Typography variant="small" className="mb-3 text-white/50">
-                  Portfolio
+              <div className="flex gap-2 text-800">
+                <Typography variant="h6">Porfolio Link: </Typography>
+                <Typography variant="paragraph">
+                  {data.portfolio_link && <a href={data.porfolio_link}>Link</a>}
+                  {!data.portfolio_link && 'N/A'}
                 </Typography>
-
-                {data?.portfolio_link ? (
-                  <a
-                    href={data.portfolio_link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center rounded-full border border-violet-300/30 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/30"
-                  >
-                    Ir a portfolio
-                  </a>
-                ) : (
-                  <Typography variant="paragraph">N/A</Typography>
-                )}
               </div>
             </div>
           )}
@@ -361,11 +315,7 @@ const OpenCardHeaderActionsCTAs = ({ data }: any) => {
       {data.origin !== 'public' && data.origin !== 'community' && (
         <OpenCardHeaderActionsCTAsContactMethodDialog contactID={data.user} />
       )}
-      <Button
-        variant="outlined"
-        className="flex items-center gap-3"
-        onClick={toggleLike}
-      >
+      <Button variant="outlined" className="flex items-center gap-3" onClick={toggleLike}>
         <img
           src={data.is_liked_by_user ? removeFavoriteIcon : addfavoriteIcon}
           alt="favorite-button"
@@ -480,7 +430,9 @@ const OpenCardHeaderResourcesTable = (props: any) => {
                 handleShowContent(id);
               } else if (file_extension === '.pdf') {
                 handleShowContent(null, location_url);
-              } else if (location_url.includes('/embed/')) {
+              } else if (
+                location_url.includes('/embed/')
+              ) {
                 handleShowContent(null, location_url);
               } else {
                 window.open(location_url, '_blank');

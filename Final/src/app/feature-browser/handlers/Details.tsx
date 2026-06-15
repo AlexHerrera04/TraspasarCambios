@@ -1,8 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-<<<<<<< HEAD
-import { capitalize } from 'lodash';
-=======
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
@@ -19,11 +15,7 @@ import {
   Spinner,
   Typography,
 } from '@material-tailwind/react';
-import {
-  CheckCircleIcon,
-  UserCircleIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import Table from '../../ui/Table';
@@ -60,15 +52,11 @@ const OpenCardHeaderUserPriceContainer = styled(motion.div).attrs({
 
 const OpenCardHeaderFeatureImage = ({ data }: any) => {
   const hasImage = !!data?.public_image;
-<<<<<<< HEAD
-  const sourceLabel = data?.external_source || data?.origin || '';
-=======
   const sourceLabel =
     data?.external_source ||
     (data?.origin !== 'public' && data?.origin !== 'community'
       ? data?.origin
       : '');
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
 
   return (
     <div className="rounded-md shadow-dark shadow-md transition-all w-96 max-w-full">
@@ -116,11 +104,7 @@ const OpenCardHeaderFeatureImage = ({ data }: any) => {
             className="absolute right-2 top-4 z-10 rounded bg-dark-600/90 px-4 py-2 shadow-lg shadow-dark backdrop-blur-sm"
           >
             <motion.span className="text-sm text-white">
-<<<<<<< HEAD
-              {capitalize(String(sourceLabel))}
-=======
               {sourceLabel}
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
             </motion.span>
           </motion.div>
         )}
@@ -239,13 +223,6 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
     },
   });
 
-  const fullName =
-    [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() ||
-    data?.public_name ||
-    'N/A';
-
-  const profileImage = data?.profile_picture || data?.wiki_avatar || '';
-
   return (
     <>
       <Button
@@ -269,33 +246,12 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
         }}
         className="bg-dark-600/95"
       >
-        <DialogHeader className="text-label">Compartido por:</DialogHeader>
+        <DialogHeader className="text-label">Contacto</DialogHeader>
         <DialogBody divider>
           {isFetching ? (
             <div>Loading...</div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt={fullName}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-700">
-                    <UserCircleIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-
-                <div>
-                  <Typography variant="small" className="mb-1 text-white/50">
-                    Nombre completo
-                  </Typography>
-                  <Typography variant="paragraph">{fullName}</Typography>
-                </div>
-              </div>
-
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <Typography variant="small" className="mb-1 text-white/50">
                   Email
@@ -326,7 +282,7 @@ const OpenCardHeaderActionsCTAsContactMethodDialog = ({ contactID }: any) => {
                     rel="noreferrer"
                     className="inline-flex items-center rounded-full border border-violet-300/30 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/30"
                   >
-                    Ir a portfolio
+                    Abrir portfolio
                   </a>
                 ) : (
                   <Typography variant="paragraph">N/A</Typography>

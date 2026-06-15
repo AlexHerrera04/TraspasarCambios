@@ -140,10 +140,6 @@ export default function CompanyLearningRoutes() {
           progress: 'Progress',
           access: 'Open',
           routeDone: 'I completed the route',
-<<<<<<< HEAD
-          completed: 'Completed',
-=======
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
           noEvaluation: 'No evaluation',
           doEvaluation: 'Take evaluation',
           viewAssessment: 'View assessment',
@@ -158,10 +154,6 @@ export default function CompanyLearningRoutes() {
           progress: 'Progreso',
           access: 'Acceder',
           routeDone: 'He finalizado la ruta',
-<<<<<<< HEAD
-          completed: 'Completada',
-=======
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
           noEvaluation: 'Sin evaluación',
           doEvaluation: 'Hacer evaluación',
           viewAssessment: 'Ver assessment',
@@ -261,10 +253,7 @@ export default function CompanyLearningRoutes() {
 
   const handleToggleCard = (route: StoredRoute, contentId?: number) => {
     const key = cardKey(route.id, contentId);
-
-    if (completedCards[key]) return;
-
-    const nextCards = { ...completedCards, [key]: true };
+    const nextCards = { ...completedCards, [key]: !completedCards[key] };
     setCompletedCards(nextCards);
     localStorage.setItem(COMPLETED_CARDS_STORAGE_KEY, JSON.stringify(nextCards));
   };
@@ -361,7 +350,7 @@ export default function CompanyLearningRoutes() {
           </Button>
 
           <span className="w-40 rounded-md border border-tertiary bg-tertiary/70 p-2 text-center text-sm">
-            {checked ? copy.completed : getDeadlineText(route)}
+            {getDeadlineText(route)}
           </span>
 
           <div className="hidden items-center sm:flex">
@@ -370,7 +359,6 @@ export default function CompanyLearningRoutes() {
               color="deep-purple"
               onChange={() => handleToggleCard(route, contentId)}
               id={checkboxUniqueId}
-              disabled={checked}
             />
             <label htmlFor={checkboxUniqueId} className="w-[170px]">
               {copy.routeDone}
@@ -467,11 +455,7 @@ export default function CompanyLearningRoutes() {
 
             <span className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary-500/20 bg-primary-500/10 px-3 py-1.5 text-sm font-medium text-primary-100">
               <ClockIcon className="h-4 w-4" />
-<<<<<<< HEAD
-              {fullyCompleted ? copy.completed : getDeadlineText(child)}
-=======
               {getDeadlineText(child)}
->>>>>>> d6d4571f5834be47f96349f33022f04cbd3499f9
             </span>
 
             {showEvaluation && (
@@ -566,11 +550,9 @@ export default function CompanyLearningRoutes() {
 
                 <span className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary-500/20 bg-primary-500/10 px-4 py-2 text-sm font-medium text-primary-100">
                   <ClockIcon className="h-4 w-4" />
-                  {parentCompleted
-                    ? copy.completed
-                    : children.length > 0
-                      ? getCollapsedDeadlineText(route)
-                      : getDeadlineText(route)}
+                  {children.length > 0
+                    ? getCollapsedDeadlineText(route)
+                    : getDeadlineText(route)}
                 </span>
 
                 {showEvaluation && (
