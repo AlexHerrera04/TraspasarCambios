@@ -7,6 +7,7 @@ import api from 'src/app/core/api/apiProvider';
 import Button from 'src/app/ui/Button';
 import withNavbar from '../../core/handlers/withNavbar';
 import { useOrganizations } from '../services/organizationService';
+import { useGroupUsers } from '../services/userService';
 import {
   downloadInvitationsCsv,
   StoredUserInvitation,
@@ -202,6 +203,7 @@ const CreateUserFlow: React.FC = () => {
   const navigate = useNavigate();
   const { organizations, isLoading: isLoadingOrganizations } =
     useOrganizations();
+  const { data: existingUsers = [] } = useGroupUsers();
 
   const [mode, setMode] = useState<AddMode>('select');
   const [step, setStep] = useState<FlowStep>('select');
@@ -211,6 +213,9 @@ const CreateUserFlow: React.FC = () => {
   const [sharedKey, setSharedKey] = useState(generateRandomKey());
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bulkUserErrors, setBulkUserErrors] = useState<Record<number, string>>(
+    {}
+  );
   const [showSendConfirmation, setShowSendConfirmation] = useState(false);
 
   const [editingCreatedUserIndex, setEditingCreatedUserIndex] = useState<
@@ -236,6 +241,58 @@ const CreateUserFlow: React.FC = () => {
       })),
     [organizations]
   );
+
+  const existingUserEmails = useMemo(() => {
+    return new Set(
+      (existingUsers as Array<{ email?: string; contact_email?: string }>)
+        .map((existingUser) =>
+          (existingUser.email || existingUser.contact_email || '')
+            .trim()
+            .toLowerCase()
+        )
+        .filter(Boolean)
+    );
+  }, [existingUsers]);
+
+  const getBulkUserErrors = (usersToValidate: UserDraft[]) => {
+    const errors: Record<number, string> = {};
+    const csvEmails = new Map<string, number>();
+
+    usersToValidate.forEach((user, index) => {
+      const validationError = validateBulkUser(user);
+
+      if (validationError) {
+        errors[index] = validationError;
+        return;
+      }
+
+      const normalizedEmail = user.email.trim().toLowerCase();
+
+      if (existingUserEmails.has(normalizedEmail)) {
+        errors[index] = 'Usuario ya creado';
+        return;
+      }
+
+      const firstEmailIndex = csvEmails.get(normalizedEmail);
+
+      if (firstEmailIndex !== undefined) {
+        errors[index] = 'Email repetido en el CSV';
+        errors[firstEmailIndex] = 'Email repetido en el CSV';
+        return;
+      }
+
+      csvEmails.set(normalizedEmail, index);
+    });
+
+    return errors;
+  };
+
+  const validBulkUsers = useMemo(
+    () => bulkUsers.filter((_, index) => !bulkUserErrors[index]),
+    [bulkUsers, bulkUserErrors]
+  );
+
+  const bulkErrorCount = Object.keys(bulkUserErrors).length;
 
   const createdInvitations = useMemo(
     () =>
@@ -296,18 +353,32 @@ const CreateUserFlow: React.FC = () => {
       return;
     }
 
-    const invalidUser = parsedUsers.find((user) => validateBulkUser(user));
+    const rowErrors = getBulkUserErrors(parsedUsers);
+    const validUsersCount = parsedUsers.length - Object.keys(rowErrors).length;
 
-    if (invalidUser) {
-      toast.error(
-        `${validateBulkUser(invalidUser)}: ${
-          invalidUser.email || 'usuario sin mail'
-        }`
+    setBulkUsers(parsedUsers);
+    setBulkUserErrors(rowErrors);
+
+    if (!validUsersCount) {
+      toast.error('Todos los usuarios del CSV tienen errores');
+      return;
+    }
+
+    if (Object.keys(rowErrors).length) {
+      toast.warning(
+        `${validUsersCount} usuarios válidos. Revisa los marcados en rojo.`
       );
       return;
     }
 
-    setBulkUsers(parsedUsers);
+    toast.success(`${validUsersCount} usuarios válidos detectados`);
+  };
+
+  const handleRemoveBulkUser = (indexToRemove: number) => {
+    const nextUsers = bulkUsers.filter((_, index) => index !== indexToRemove);
+
+    setBulkUsers(nextUsers);
+    setBulkUserErrors(getBulkUserErrors(nextUsers));
   };
 
   const createUser = async (user: UserDraft): Promise<CreatedUser> => {
@@ -369,16 +440,22 @@ const CreateUserFlow: React.FC = () => {
   };
 
   const handleBulkUploadNext = () => {
-    if (!bulkUsers.length) {
-      toast.error('Importa un CSV antes de continuar');
+    if (!validBulkUsers.length) {
+      toast.error('No hay usuarios válidos para crear');
       return;
     }
 
+    if (bulkErrorCount) {
+      toast.info(`Se omitirán ${bulkErrorCount} usuarios con errores`);
+    }
+
+    setBulkUsers(validBulkUsers);
+    setBulkUserErrors({});
     setStep('bulk-keys');
   };
 
   const handleBulkCreateNext = async () => {
-    if (!bulkUsers.length) {
+    if (!validBulkUsers.length) {
       toast.error('Importa un CSV antes de continuar');
       return;
     }
@@ -393,21 +470,44 @@ const CreateUserFlow: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      const usersWithKeys = bulkUsers.map((user) => ({
+      const usersWithKeys = validBulkUsers.map((user) => ({
         ...user,
         key: bulkKeyMode === 'same' ? keyToUse : generateRandomKey(),
       }));
 
       const createdBulkUsers: CreatedUser[] = [];
+      const failedUsers: string[] = [];
 
       for (const user of usersWithKeys) {
-        const createdUser = await createUser(user);
-        createdBulkUsers.push(createdUser);
+        try {
+          const createdUser = await createUser(user);
+          createdBulkUsers.push(createdUser);
+        } catch (error: any) {
+          const errorMessage =
+            error?.response?.data?.detail ||
+            error?.response?.data?.message ||
+            error?.message ||
+            'Error al crear usuario';
+
+          failedUsers.push(`${user.email}: ${errorMessage}`);
+        }
+      }
+
+      if (!createdBulkUsers.length) {
+        toast.error(failedUsers[0] || 'Error al crear usuarios');
+        return;
       }
 
       setCreatedUsers(createdBulkUsers);
       upsertUserInvitations(createdBulkUsers, 'pending');
       setStep('actions');
+
+      if (failedUsers.length) {
+        toast.warning(
+          `${createdBulkUsers.length} usuarios creados. ${failedUsers.length} no se pudieron crear.`
+        );
+        return;
+      }
 
       toast.success(`${createdBulkUsers.length} usuarios creados correctamente`);
     } catch (error: any) {
@@ -682,7 +782,7 @@ const handleConfirmSendInvitations = async () => {
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="text-xs uppercase tracking-wide text-white/40">
-                Área especializada
+                Área especializada del usuario
               </p>
               <p className="mt-1 text-lg font-semibold text-white">
                 {user.organization || '-'}
@@ -878,7 +978,7 @@ const handleConfirmSendInvitations = async () => {
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Área especializada">
+              <Field label="Área especializada del usuario">
                 {isLoadingOrganizations ? (
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <Spinner className="h-4 w-4" />
@@ -1039,6 +1139,11 @@ const handleConfirmSendInvitations = async () => {
                     Usuarios detectados: {bulkUsers.length}
                   </Typography>
 
+                  <p className="mt-2 text-sm text-white/60">
+                    Válidos: {validBulkUsers.length}
+                    {bulkErrorCount > 0 ? ` · Con errores: ${bulkErrorCount}` : ''}
+                  </p>
+
                   <div className="mt-4 max-h-80 overflow-auto">
                     <table className="w-full text-left text-sm">
                       <thead>
@@ -1046,16 +1151,52 @@ const handleConfirmSendInvitations = async () => {
                           <th className="p-2">Nombre</th>
                           <th className="p-2">Apellido</th>
                           <th className="p-2">Mail</th>
+                          <th className="p-2">Estado</th>
+                          <th className="p-2"></th>
                         </tr>
                       </thead>
+
                       <tbody>
-                        {bulkUsers.map((user, index) => (
-                          <tr key={`${user.email}-${index}`}>
-                            <td className="p-2">{user.first_name}</td>
-                            <td className="p-2">{user.last_name}</td>
-                            <td className="p-2">{user.email}</td>
-                          </tr>
-                        ))}
+                        {bulkUsers.map((user, index) => {
+                          const rowError = bulkUserErrors[index];
+
+                          return (
+                            <tr
+                              key={`${user.email}-${index}`}
+                              className={
+                                rowError
+                                  ? 'border-b border-red-500/20 bg-red-500/10 text-red-200'
+                                  : 'border-b border-white/5 text-white'
+                              }
+                            >
+                              <td className="p-2">{user.first_name}</td>
+                              <td className="p-2">{user.last_name}</td>
+                              <td className="p-2">{user.email}</td>
+                              <td className="p-2">
+                                {rowError ? (
+                                  <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-200">
+                                    {rowError}
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-200">
+                                    OK
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2 text-right">
+                                {rowError && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveBulkUser(index)}
+                                    className="rounded-lg border border-red-400/30 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+                                  >
+                                    Quitar
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1068,7 +1209,12 @@ const handleConfirmSendInvitations = async () => {
                 Cancelar
               </Button>
 
-              <Button type="button" primary onClick={handleBulkUploadNext}>
+              <Button
+                type="button"
+                primary
+                onClick={handleBulkUploadNext}
+                disabled={!validBulkUsers.length}
+              >
                 Siguiente
               </Button>
             </div>
@@ -1302,7 +1448,7 @@ const handleConfirmSendInvitations = async () => {
                   />
                 </Field>
 
-                <Field label="Área especializada">
+                <Field label="Área especializada del usuario">
                   <input
                     type="text"
                     value={editingCreatedUser.organization}

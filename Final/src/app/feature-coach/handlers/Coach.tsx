@@ -14,6 +14,7 @@ type PanelKey =
   | 'dimensiones'
   | 'resumen'
   | 'contexto'
+  | 'organizacional'
   | 'historial';
 type DiagnosticFeedback = '' | 'like' | 'dislike';
 type SelectedPersonValue = number | 'all';
@@ -1214,6 +1215,7 @@ const Coach: FunctionComponent = () => {
   const [searchParams] = useSearchParams();
   const isAdminMode = searchParams.get('admin') === '1';
   const { userAccountInfo, userInfo } = useUser();
+  const isSuperAdmin = Boolean(userAccountInfo?.is_account_admin);
 
   const freeChatStorageKey = getScopedStorageKey(
     FREE_CHAT_STORAGE_KEY,
@@ -1338,6 +1340,7 @@ const Coach: FunctionComponent = () => {
     dimensiones: true,
     resumen: true,
     contexto: false,
+    organizacional: false,
     historial: false,
   });
 
@@ -2948,7 +2951,7 @@ const Coach: FunctionComponent = () => {
               className="flex w-full items-center justify-between text-left"
             >
               <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-300">
-                Contexto actual
+              Mi contexto
               </h2>
               <span className={panelArrowClass(openPanels.contexto)}>{'>'}</span>
             </button>
@@ -3031,7 +3034,56 @@ const Coach: FunctionComponent = () => {
               </>
             )}
           </div>
+          
 
+          <div className="rounded-2xl border border-white/10 bg-gray-800 p-5">
+            <button
+              type="button"
+              onClick={() => {
+                if (isSuperAdmin) {
+                  togglePanel('organizacional');
+                }
+              }}
+              disabled={!isSuperAdmin}
+              className="flex w-full items-center justify-between text-left disabled:cursor-not-allowed"
+            >
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-300">
+                  Contexto organizacional
+                </h2>
+
+                {!isSuperAdmin && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Bloqueado. Solo disponible para super admin.
+                  </p>
+                )}
+              </div>
+
+              {isSuperAdmin ? (
+                <span className={panelArrowClass(openPanels.organizacional)}>
+                  {'>'}
+                </span>
+              ) : (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-gray-400">
+                  Bloqueado
+                </span>
+              )}
+            </button>
+
+            {isSuperAdmin && openPanels.organizacional && (
+              <div className="mt-4 rounded-xl border border-primary-500/20 bg-primary-900/10 p-4">
+                <p className="text-sm font-semibold text-primary-200">
+                  Contexto organizacional
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-gray-300">
+                  Este apartado está reservado para información organizacional y
+                  solo puede verlo el super admin.
+                </p>
+              </div>
+            )}
+          </div>
+          
           <div className="rounded-2xl border border-white/10 bg-gray-800 p-5">
             <button
               type="button"

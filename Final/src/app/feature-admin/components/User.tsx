@@ -58,9 +58,9 @@ type UserStatusFilter = 'total' | UserStatus;
 
 const statusLabels: Record<UserStatusFilter, string> = {
   total: 'Usuarios Totales',
-  active: 'Usuario Enrolado',
-  pending: 'Creado',
-  invited: 'Invitado (No Onboarded)',
+  active: 'Usuarios Enrolados',
+  pending: 'Usuarios Creados',
+  invited: 'Usuarios Invitados',
 };
 
 const ADMIN_USER_INVITATION_ENDPOINT =
@@ -406,20 +406,7 @@ const UserTable: React.FC<UserTableProps> = ({ searchTerm }) => {
     }
   };
 
-  const handleOpenEditInvitation = (user: User) => {
-
-  const handleRequestSendInvitation = (user: User) => {
-  setInvitationToSend(user);
-};
-
-const handleConfirmSendInvitation = async () => {
-  if (!invitationToSend) return;
-
-  const user = invitationToSend;
-
-  setInvitationToSend(null);
-  await handleSendInvitation(user);
-};
+ const handleOpenEditInvitation = (user: User) => {
     const invitation =
       getInvitationForUser(user) || findUserInvitation(getUserEmail(user));
 
@@ -435,6 +422,19 @@ const handleConfirmSendInvitation = async () => {
       key: invitation.key || '',
       organization: invitation.organization || '',
     });
+  };
+
+  const handleRequestSendInvitation = (user: User) => {
+    setInvitationToSend(user);
+  };
+
+  const handleConfirmSendInvitation = async () => {
+    if (!invitationToSend) return;
+
+    const user = invitationToSend;
+
+    setInvitationToSend(null);
+    await handleSendInvitation(user);
   };
 
   const handleSaveInvitation = () => {
@@ -523,9 +523,11 @@ const handleConfirmSendInvitation = async () => {
   };
 
   const invitationToConfirm = invitationToSend
-  ? getInvitationForUser(invitationToSend) ||
-    findUserInvitation(getUserEmail(invitationToSend))
-  : null;
+    ? getInvitationForUser(invitationToSend) ||
+      findUserInvitation(getUserEmail(invitationToSend))
+    : null;
+
+  if (isLoading) {
     return (
       <Card className="h-full w-full bg-gray-800">
         <CardBody className="flex justify-center p-10">
@@ -648,14 +650,12 @@ const handleConfirmSendInvitation = async () => {
                       }`}
                     >
                       {status === 'active'
-                        ? enrollmentDate
-                        ? `Usuario Enrolado desde ${formatEnrollmentDate(
-                              enrollmentDate
-                                 )}`
-                        : 'Usuario Enrolado'
-                        : status === 'invited'
-                         ? 'Invitado (No Onboarded)'
-                        : 'Creado'}
+                      ? enrollmentDate
+                        ? `Enrolado desde ${formatEnrollmentDate(enrollmentDate)}`
+                         : 'Enrolado'
+                       : status === 'invited'
+                       ? 'Invitado'
+                       : 'Creado'}
                     </span>
                   </td>
 
@@ -953,41 +953,70 @@ const handleConfirmSendInvitation = async () => {
         </div>
       </Dialog>
       
-      <Dialog
-  open={Boolean(invitationToSend)}
-  handler={() => setInvitationToSend(null)}
-  className="max-w-md bg-gray-800"
->
-  <div className="p-6">
-    <Typography variant="h5" className="text-white">
-      Confirmar envío de mail
-    </Typography>
-
-    <p className="mt-3 text-sm leading-6 text-gray-300">
-      {`¿Seguro que quieres enviar el mail de invitación${
-        invitationToConfirm?.email ? ` a ${invitationToConfirm.email}` : ''
-      }?`}
-    </p>
-
-    <div className="mt-6 flex justify-end gap-3">
-      <Button
-        onClick={() => setInvitationToSend(null)}
-        type="button"
-        variant="outlined"
+     <Dialog
+        open={Boolean(invitationToSend)}
+        handler={() => setInvitationToSend(null)}
+        className="max-w-md overflow-hidden rounded-3xl border border-primary-500/20 bg-[#111827] shadow-2xl shadow-primary-900/30"
       >
-        Cancelar
-      </Button>
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-primary-900/60 via-primary-700/30 to-fuchsia-900/40" />
 
-      <Button
-        type="button"
-        variant="filled"
-        onClick={handleConfirmSendInvitation}
-      >
-        Confirmar y enviar
-      </Button>
-    </div>
-  </div>
-</Dialog>
+          <div className="relative p-6">
+            <div className="mb-5 flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-400/30 bg-primary-900/50 text-2xl shadow-lg shadow-primary-900/30">
+                ✉️
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-300">
+                  Invitación
+                </p>
+
+                <Typography variant="h5" className="mt-1 text-white">
+                  Enviar invitación
+                </Typography>
+
+                <p className="mt-2 text-sm leading-6 text-gray-300">
+                  Se enviará un correo para que el usuario complete su acceso a
+                  la plataforma.
+                </p>
+              </div>
+            </div>
+
+            {invitationToConfirm?.email && (
+              <div className="mb-6 rounded-2xl border border-primary-500/20 bg-primary-900/20 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-300">
+                  Destinatario
+                </p>
+
+                <p className="mt-2 break-all font-medium text-primary-100">
+                  {invitationToConfirm.email}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={() => setInvitationToSend(null)}
+                type="button"
+                variant="outlined"
+                className="rounded-xl border-white/10 px-5 py-3 text-gray-300 hover:bg-white/10"
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                type="button"
+                variant="filled"
+                onClick={handleConfirmSendInvitation}
+                className="rounded-xl bg-primary-600 px-5 py-3 font-semibold normal-case text-white shadow-lg shadow-primary-900/30 hover:bg-primary-500"
+              >
+                Enviar invitación
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Dialog>
 
 <Dialog
   open={showCapacitiesModal}
